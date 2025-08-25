@@ -1,5 +1,5 @@
-
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ interface DashboardStats {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
     activePartners: 0,
@@ -61,6 +62,18 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUploadOrders = () => {
+    navigate('/upload');
+  };
+
+  const handleViewAnalytics = () => {
+    navigate('/dashboard');
+  };
+
+  const handleQuickAction = (href: string) => {
+    navigate(href);
   };
 
   const quickActions = [
@@ -161,11 +174,11 @@ const Index = () => {
               Revolutionary AI-powered dispatch system combining quantum computing with classical optimization for unparalleled route efficiency.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button size="lg" className="bg-white text-primary hover:bg-white/90">
+              <Button size="lg" className="bg-white text-primary hover:bg-white/90" onClick={handleUploadOrders}>
                 <Upload className="w-5 h-5 mr-2" />
                 Upload Orders
               </Button>
-              <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handleViewAnalytics}>
                 <BarChart3 className="w-5 h-5 mr-2" />
                 View Analytics
               </Button>
@@ -224,7 +237,7 @@ const Index = () => {
                   <CardDescription>{action.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <Button className="w-full" variant="outline">
+                  <Button className="w-full" variant="outline" onClick={() => handleQuickAction(action.href)}>
                     Get Started
                   </Button>
                 </CardContent>
