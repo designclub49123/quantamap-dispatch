@@ -1,9 +1,7 @@
 
-import { createClient } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 export async function initializeStorage() {
-  const supabase = createClient();
-  
   try {
     // Check if uploads bucket exists, create if not
     const { data: buckets } = await supabase.storage.listBuckets();

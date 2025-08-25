@@ -1,5 +1,5 @@
 
-import { createClient } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
 export interface UploadResult {
@@ -14,8 +14,6 @@ export interface UploadResult {
 
 export async function uploadAndParseFile(file: File): Promise<UploadResult> {
   try {
-    const supabase = createClient();
-    
     console.log('Starting file upload process for:', file.name);
     
     // Upload file to Supabase storage
