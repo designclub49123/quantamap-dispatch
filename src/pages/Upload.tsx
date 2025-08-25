@@ -1,11 +1,13 @@
-
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { createClient } from '@/integrations/supabase/client';
+import { uploadAndParseFile, UploadResult } from '@/lib/fileUpload';
+import { initializeStorage } from '@/lib/supabaseStorage';
 import { 
   Upload as UploadIcon, 
   FileSpreadsheet, 
@@ -31,6 +33,11 @@ const Upload = () => {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
+
+  // Initialize storage on component mount
+  useEffect(() => {
+    initializeStorage();
+  }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -63,14 +70,20 @@ const Upload = () => {
     const file = files[0];
     if (!file) return;
 
+    console.log('Handling file:', file.name, 'Type:', file.type, 'Size:', file.size);
+
     // Validate file type
     const validTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
-      'text/csv'
+      'text/csv',
+      'application/csv'
     ];
     
-    if (!validTypes.includes(file.type)) {
+    const isValidType = validTypes.includes(file.type) || file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    
+    if (!isValidType) {
+      console.error('Invalid file type:', file.type);
       toast({
         title: "Invalid file type",
         description: "Please upload an Excel (.xlsx, .xls) or CSV file",
@@ -79,10 +92,23 @@ const Upload = () => {
       return;
     }
 
+    // Validate file size (10MB limit)
+    if (file.size > 10485760) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
+    setParsedData(null);
 
     try {
+      console.log('Starting file upload and parsing...');
+      
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -94,19 +120,41 @@ const Upload = () => {
         });
       }, 200);
 
-      // Simulate file processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setUploadProgress(100);
+      // Upload and parse file
+      const result: UploadResult = await uploadAndParseFile(file);
       
-      // Start parsing
-      setParsing(true);
-      await parseFile(file);
+      setUploadProgress(100);
+      clearInterval(progressInterval);
+      
+      if (result.success && result.data) {
+        console.log('File processed successfully:', result.data);
+        
+        setParsing(true);
+        
+        // Simulate AI parsing delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setParsedData({
+          orders: result.data.orders,
+          partners: result.data.partners,
+          errors: [],
+          warnings: result.data.warnings || []
+        });
+        
+        toast({
+          title: "File parsed successfully!",
+          description: `Found ${result.data.orders.length} orders and ${result.data.partners.length} partners`,
+        });
+      } else {
+        console.error('File processing failed:', result.error);
+        throw new Error(result.error || 'Failed to process file');
+      }
       
     } catch (error) {
       console.error('Upload error:', error);
       toast({
-        title: "Upload failed",
-        description: "There was an error uploading your file",
+        title: "Upload failed", 
+        description: error instanceof Error ? error.message : "There was an error uploading your file",
         variant: "destructive"
       });
     } finally {
@@ -115,103 +163,56 @@ const Upload = () => {
     }
   };
 
-  const parseFile = async (file: File) => {
-    try {
-      // Mock AI parsing results - in real app, this would call OpenRouter API
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const mockParsedData: ParsedData = {
-        orders: [
-          {
-            external_id: "ORD-001",
-            pickup_name: "Restaurant A",
-            pickup_lat: 19.0760,
-            pickup_lng: 72.8777,
-            drop_name: "Customer 1",
-            drop_lat: 19.0896,
-            drop_lng: 72.8656,
-            priority: 2,
-            service_minutes: 5,
-            weight: 1.2
-          },
-          {
-            external_id: "ORD-002",
-            pickup_name: "Restaurant B",
-            pickup_lat: 19.0825,
-            pickup_lng: 72.8751,
-            drop_name: "Customer 2",
-            drop_lat: 19.0945,
-            drop_lng: 72.8712,
-            priority: 1,
-            service_minutes: 3,
-            weight: 0.8
-          },
-          {
-            external_id: "ORD-003",
-            pickup_name: "Restaurant C",
-            pickup_lat: 19.0712,
-            pickup_lng: 72.8891,
-            drop_name: "Customer 3",
-            drop_lat: 19.0889,
-            drop_lng: 72.8534,
-            priority: 3,
-            service_minutes: 4,
-            weight: 1.5
-          }
-        ],
-        partners: [
-          {
-            name: "Rahul Kumar",
-            vehicle_type: "bike",
-            capacity: 8,
-            shift_start: "09:00",
-            shift_end: "18:00"
-          },
-          {
-            name: "Priya Singh",
-            vehicle_type: "scooter",
-            capacity: 12,
-            shift_start: "10:00",
-            shift_end: "19:00"
-          }
-        ],
-        errors: [],
-        warnings: [
-          "Row 15: Missing time window for order ORD-015",
-          "Row 23: Estimated coordinates for 'Andheri West' - please verify"
-        ]
-      };
-
-      setParsedData(mockParsedData);
-      
-      toast({
-        title: "File parsed successfully!",
-        description: `Found ${mockParsedData.orders.length} orders and ${mockParsedData.partners.length} partners`,
-      });
-      
-    } catch (error) {
-      console.error('Parsing error:', error);
-      toast({
-        title: "Parsing failed",
-        description: "AI parsing encountered an error. Please check your file format.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleSave = async () => {
     if (!parsedData) return;
     
     try {
-      // Here we would save to Supabase
+      console.log('Saving parsed data to database...');
+      const supabase = createClient();
+      
+      // Save orders to database
+      if (parsedData.orders.length > 0) {
+        const { error: ordersError } = await supabase
+          .from('orders')
+          .insert(parsedData.orders.map(order => ({
+            ...order,
+            org_id: '00000000-0000-0000-0000-000000000000' // Default org for demo
+          })));
+        
+        if (ordersError) {
+          console.error('Error saving orders:', ordersError);
+          throw ordersError;
+        }
+      }
+      
+      // Save partners to database
+      if (parsedData.partners.length > 0) {
+        const { error: partnersError } = await supabase
+          .from('delivery_partners')
+          .insert(parsedData.partners.map(partner => ({
+            ...partner,
+            org_id: '00000000-0000-0000-0000-000000000000' // Default org for demo
+          })));
+        
+        if (partnersError) {
+          console.error('Error saving partners:', partnersError);
+          throw partnersError;
+        }
+      }
+      
       toast({
         title: "Data saved successfully!",
         description: `${parsedData.orders.length} orders and ${parsedData.partners.length} partners saved to database`,
       });
+      
+      // Reset the form after successful save
+      setParsedData(null);
+      
     } catch (error) {
+      console.error('Save error:', error);
       toast({
         title: "Save failed",
-        description: "There was an error saving the data",
+        description: "There was an error saving the data to the database",
         variant: "destructive"
       });
     }
@@ -277,7 +278,7 @@ const Upload = () => {
                       <div className="flex items-center justify-center gap-2">
                         <Sparkles className="w-4 h-4 animate-quantum-pulse" />
                         <span className="text-sm text-muted-foreground">
-                          OpenRouter AI analyzing your data
+                          Processing your data
                         </span>
                       </div>
                     </div>
