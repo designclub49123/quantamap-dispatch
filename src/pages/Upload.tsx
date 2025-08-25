@@ -223,7 +223,7 @@ const Upload = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
-          <div className="p-2 bg-quantum-gradient rounded-lg">
+          <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
             <UploadIcon className="w-6 h-6 text-white" />
           </div>
           Upload Orders
@@ -236,7 +236,7 @@ const Upload = () => {
       {!parsedData ? (
         <div className="space-y-6">
           {/* Upload Area */}
-          <Card className="quantum-card">
+          <Card>
             <CardContent className="p-8">
               <div
                 className={`relative border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200 ${
@@ -258,9 +258,9 @@ const Upload = () => {
                 />
                 
                 <div className="space-y-4">
-                  <div className="w-16 h-16 bg-quantum-gradient rounded-full flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
                     {uploading || parsing ? (
-                      <Sparkles className="w-8 h-8 text-white animate-quantum-pulse" />
+                      <Sparkles className="w-8 h-8 text-white animate-spin" />
                     ) : (
                       <FileSpreadsheet className="w-8 h-8 text-white" />
                     )}
@@ -276,7 +276,7 @@ const Upload = () => {
                     <div className="space-y-2">
                       <p className="text-lg font-medium">AI parsing in progress...</p>
                       <div className="flex items-center justify-center gap-2">
-                        <Sparkles className="w-4 h-4 animate-quantum-pulse" />
+                        <Sparkles className="w-4 h-4 animate-spin" />
                         <span className="text-sm text-muted-foreground">
                           Processing your data
                         </span>
@@ -301,7 +301,7 @@ const Upload = () => {
           </Card>
 
           {/* Instructions */}
-          <Card className="quantum-card">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
@@ -341,11 +341,11 @@ const Upload = () => {
       ) : (
         <div className="space-y-6">
           {/* Results Header */}
-          <Card className="quantum-card">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-success-gradient rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                   <div>
@@ -364,7 +364,7 @@ const Upload = () => {
                     <Download className="w-4 h-4" />
                     Export
                   </Button>
-                  <Button onClick={handleSave} className="quantum-gradient text-white gap-2">
+                  <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white gap-2">
                     <Save className="w-4 h-4" />
                     Save to Database
                   </Button>
@@ -375,9 +375,9 @@ const Upload = () => {
 
           {/* Warnings */}
           {parsedData.warnings.length > 0 && (
-            <Card className="quantum-card border-warning-200">
+            <Card className="border-orange-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-warning-700">
+                <CardTitle className="flex items-center gap-2 text-orange-700">
                   <AlertCircle className="w-5 h-5" />
                   Warnings ({parsedData.warnings.length})
                 </CardTitle>
@@ -385,7 +385,7 @@ const Upload = () => {
               <CardContent>
                 <ul className="space-y-2">
                   {parsedData.warnings.map((warning, index) => (
-                    <li key={index} className="text-sm text-warning-700">
+                    <li key={index} className="text-sm text-orange-700">
                       {warning}
                     </li>
                   ))}
@@ -396,7 +396,7 @@ const Upload = () => {
 
           {/* Data Preview */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="quantum-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Orders ({parsedData.orders.length})</CardTitle>
                 <CardDescription>Parsed order data preview</CardDescription>
@@ -407,7 +407,7 @@ const Upload = () => {
                     <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-1">
                       <div className="flex justify-between items-start">
                         <span className="font-medium">{order.external_id}</span>
-                        <Badge className={`status-badge-new`}>
+                        <Badge variant="secondary">
                           Priority {order.priority}
                         </Badge>
                       </div>
@@ -428,7 +428,7 @@ const Upload = () => {
               </CardContent>
             </Card>
 
-            <Card className="quantum-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Partners ({parsedData.partners.length})</CardTitle>
                 <CardDescription>Parsed partner data preview</CardDescription>
@@ -439,7 +439,7 @@ const Upload = () => {
                     <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-1">
                       <div className="flex justify-between items-start">
                         <span className="font-medium">{partner.name}</span>
-                        <Badge className={`vehicle-badge-${partner.vehicle_type}`}>
+                        <Badge variant="outline">
                           {partner.vehicle_type}
                         </Badge>
                       </div>

@@ -14,7 +14,142 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      delivery_partners: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          shift_end: string | null
+          shift_start: string | null
+          status: string | null
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          shift_end?: string | null
+          shift_start?: string | null
+          status?: string | null
+          updated_at?: string
+          vehicle_type: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          shift_end?: string | null
+          shift_start?: string | null
+          status?: string | null
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_partners_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          drop_lat: number
+          drop_lng: number
+          drop_name: string
+          external_id: string
+          id: string
+          org_id: string
+          pickup_lat: number
+          pickup_lng: number
+          pickup_name: string
+          priority: number | null
+          service_minutes: number | null
+          status: string | null
+          tw_end: string | null
+          tw_start: string | null
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          drop_lat: number
+          drop_lng: number
+          drop_name: string
+          external_id: string
+          id?: string
+          org_id: string
+          pickup_lat: number
+          pickup_lng: number
+          pickup_name: string
+          priority?: number | null
+          service_minutes?: number | null
+          status?: string | null
+          tw_end?: string | null
+          tw_start?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          drop_lat?: number
+          drop_lng?: number
+          drop_name?: string
+          external_id?: string
+          id?: string
+          org_id?: string
+          pickup_lat?: number
+          pickup_lng?: number
+          pickup_name?: string
+          priority?: number | null
+          service_minutes?: number | null
+          status?: string | null
+          tw_end?: string | null
+          tw_start?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
