@@ -155,9 +155,11 @@ const OpenLayersMap: React.FC = () => {
       const vehicleIcon = partner.vehicle_type === 'bike' ? '🏍️' : 
                          partner.vehicle_type === 'car' ? '🚗' : '🛵';
 
+      const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="14" fill="%233b82f6" stroke="white" stroke-width="2"/><text x="16" y="20" text-anchor="middle" fill="white" font-size="12">${vehicleIcon}</text></svg>`;
+
       feature.setStyle(new Style({
         image: new Icon({
-          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="14" fill="%233b82f6" stroke="white" stroke-width="2"/><text x="16" y="20" text-anchor="middle" fill="white" font-size="12">${vehicleIcon}</text></svg>`,
+          src: `data:image/svg+xml;utf8,${svgString}`,
           scale: 1
         })
       }));
@@ -175,9 +177,11 @@ const OpenLayersMap: React.FC = () => {
         type: 'pickup'
       });
 
+      const pickupSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="%2322c55e" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">P</text></svg>';
+
       pickupFeature.setStyle(new Style({
         image: new Icon({
-          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="%2222c55e" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">P</text></svg>`,
+          src: `data:image/svg+xml;utf8,${pickupSvg}`,
           scale: 1
         })
       }));
@@ -189,9 +193,11 @@ const OpenLayersMap: React.FC = () => {
         type: 'drop'
       });
 
+      const dropSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="%23ef4444" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">D</text></svg>';
+
       dropFeature.setStyle(new Style({
         image: new Icon({
-          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="%23ef4444" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">D</text></svg>`,
+          src: `data:image/svg+xml;utf8,${dropSvg}`,
           scale: 1
         })
       }));
