@@ -18,9 +18,13 @@ export type Database = {
         Row: {
           capacity: number | null
           created_at: string
+          current_lat: number | null
+          current_lng: number | null
+          email: string | null
           id: string
           name: string
           org_id: string
+          phone: string | null
           shift_end: string | null
           shift_start: string | null
           status: string | null
@@ -30,9 +34,13 @@ export type Database = {
         Insert: {
           capacity?: number | null
           created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          email?: string | null
           id?: string
           name: string
           org_id: string
+          phone?: string | null
           shift_end?: string | null
           shift_start?: string | null
           status?: string | null
@@ -42,9 +50,13 @@ export type Database = {
         Update: {
           capacity?: number | null
           created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          email?: string | null
           id?: string
           name?: string
           org_id?: string
+          phone?: string | null
           shift_end?: string | null
           shift_start?: string | null
           status?: string | null
@@ -61,6 +73,111 @@ export type Database = {
           },
         ]
       }
+      job_assignments: {
+        Row: {
+          created_at: string
+          estimated_distance: number | null
+          estimated_duration: number | null
+          id: string
+          job_id: string
+          order_id: string
+          partner_id: string
+          sequence_order: number
+        }
+        Insert: {
+          created_at?: string
+          estimated_distance?: number | null
+          estimated_duration?: number | null
+          id?: string
+          job_id: string
+          order_id: string
+          partner_id: string
+          sequence_order: number
+        }
+        Update: {
+          created_at?: string
+          estimated_distance?: number | null
+          estimated_duration?: number | null
+          id?: string
+          job_id?: string
+          order_id?: string
+          partner_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          assigned_partners: number | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          optimization_type: string | null
+          org_id: string
+          status: string | null
+          total_orders: number | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_partners?: number | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          optimization_type?: string | null
+          org_id: string
+          status?: string | null
+          total_orders?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_partners?: number | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          optimization_type?: string | null
+          org_id?: string
+          status?: string | null
+          total_orders?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -69,6 +186,7 @@ export type Database = {
           drop_name: string
           external_id: string
           id: string
+          job_id: string | null
           org_id: string
           pickup_lat: number
           pickup_lng: number
@@ -88,6 +206,7 @@ export type Database = {
           drop_name: string
           external_id: string
           id?: string
+          job_id?: string | null
           org_id: string
           pickup_lat: number
           pickup_lng: number
@@ -107,6 +226,7 @@ export type Database = {
           drop_name?: string
           external_id?: string
           id?: string
+          job_id?: string | null
           org_id?: string
           pickup_lat?: number
           pickup_lng?: number
@@ -120,6 +240,13 @@ export type Database = {
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_org_id_fkey"
             columns: ["org_id"]

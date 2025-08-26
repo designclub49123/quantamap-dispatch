@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from "react-router-dom";
 import { 
   Package, 
   Truck, 
@@ -29,17 +31,97 @@ interface DashboardStats {
   onTimeRate: number;
 }
 
+interface RecentJob {
+  id: string;
+  name: string;
+  status: string;
+  total_orders: number;
+  created_at: string;
+}
+
+interface ActivePartner {
+  id: string;
+  name: string;
+  vehicle_type: string;
+  status: string;
+}
+
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
-    totalOrders: 1247,
-    activePartners: 24,
-    completedJobs: 89,
-    avgDeliveryTime: 28.5,
-    totalDistance: 15420,
-    fuelSaved: 234.6,
-    co2Reduced: 847.2,
-    onTimeRate: 94.3
+    totalOrders: 0,
+    activePartners: 0,
+    completedJobs: 0,
+    avgDeliveryTime: 0,
+    totalDistance: 0,
+    fuelSaved: 0,
+    co2Reduced: 0,
+    onTimeRate: 0
   });
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [activePartners, setActivePartners] = useState<ActivePartner[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch orders
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('org_id', '00000000-0000-0000-0000-000000000000');
+
+      if (ordersError) throw ordersError;
+
+      // Fetch delivery partners
+      const { data: partners, error: partnersError } = await supabase
+        .from('delivery_partners')
+        .select('*')
+        .eq('org_id', '00000000-0000-0000-0000-000000000000');
+
+      if (partnersError) throw partnersError;
+
+      // Fetch jobs
+      const { data: jobs, error: jobsError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('org_id', '00000000-0000-0000-0000-000000000000')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (jobsError) throw jobsError;
+
+      // Calculate stats
+      const totalOrders = orders?.length || 0;
+      const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
+      const completedJobs = jobs?.filter(j => j.status === 'completed').length || 0;
+      const activeParts = partners?.filter(p => p.status === 'available' || p.status === 'busy' || p.status === 'delivering').length || 0;
+
+      setStats({
+        totalOrders,
+        activePartners: activeParts,
+        completedJobs,
+        avgDeliveryTime: 28.5,
+        totalDistance: totalOrders * 12.3, // Estimated
+        fuelSaved: totalOrders * 0.8, // Estimated
+        co2Reduced: totalOrders * 2.1, // Estimated
+        onTimeRate: completedOrders > 0 ? (completedOrders / totalOrders * 100) : 0
+      });
+
+      setRecentJobs(jobs || []);
+      setActivePartners(partners?.filter(p => p.status !== 'offline').slice(0, 3) || []);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const kpiCards = [
     {
@@ -100,7 +182,7 @@ const Dashboard = () => {
     },
     {
       title: "On-Time Rate",
-      value: `${stats.onTimeRate}%`,
+      value: `${stats.onTimeRate.toFixed(1)}%`,
       icon: TrendingUp,
       trend: "+2.1%",
       description: "quantum optimization",
@@ -138,6 +220,19 @@ const Dashboard = () => {
       color: "quantum-gradient"
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-8">
@@ -185,7 +280,7 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {quickActions.map((action, index) => (
-          <Card key={index} className="partner-card group overflow-hidden relative">
+          <Card key={index} className="partner-card group overflow-hidden relative cursor-pointer" onClick={() => navigate(action.href)}>
             <div className={`absolute inset-0 opacity-5 ${action.color}`} />
             <CardHeader className="text-center pb-4 relative z-10">
               <div className="w-12 h-12 rounded-lg mx-auto mb-4 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -214,27 +309,29 @@ const Dashboard = () => {
             <CardDescription>Latest optimization jobs and their status</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { id: "QF-001", status: "completed", orders: 45, time: "2h 34m ago" },
-              { id: "QF-002", status: "running", orders: 32, time: "Running" },
-              { id: "QF-003", status: "completed", orders: 28, time: "5h 12m ago" }
-            ].map((job) => (
-              <div key={job.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Badge 
-                    variant={job.status === 'completed' ? 'default' : 'secondary'}
-                    className={job.status === 'completed' ? 'bg-success-100 text-success-700' : ''}
-                  >
-                    {job.status}
-                  </Badge>
-                  <div>
-                    <p className="font-medium">{job.id}</p>
-                    <p className="text-sm text-muted-foreground">{job.orders} orders</p>
+            {recentJobs.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No recent jobs</p>
+            ) : (
+              recentJobs.map((job) => (
+                <div key={job.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge 
+                      variant={job.status === 'completed' ? 'default' : 'secondary'}
+                      className={job.status === 'completed' ? 'bg-success-100 text-success-700' : ''}
+                    >
+                      {job.status}
+                    </Badge>
+                    <div>
+                      <p className="font-medium">{job.name}</p>
+                      <p className="text-sm text-muted-foreground">{job.total_orders} orders</p>
+                    </div>
                   </div>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(job.created_at).toLocaleTimeString()}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">{job.time}</p>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -247,38 +344,37 @@ const Dashboard = () => {
             <CardDescription>Currently online delivery partners</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { name: "Rahul Kumar", vehicle: "bike", status: "delivering", eta: "15 min" },
-              { name: "Priya Singh", vehicle: "scooter", status: "available", eta: "Ready" },
-              { name: "Amit Patel", vehicle: "car", status: "en_route", eta: "8 min" }
-            ].map((partner, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-quantum-gradient rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {partner.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium">{partner.name}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`vehicle-badge-${partner.vehicle}`}>
-                        {partner.vehicle}
-                      </Badge>
+            {activePartners.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No active partners</p>
+            ) : (
+              activePartners.map((partner) => (
+                <div key={partner.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-quantum-gradient rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-medium">
+                        {partner.name.split(' ').map(n => n[0]).join('')}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{partner.name}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`vehicle-badge-${partner.vehicle_type}`}>
+                          {partner.vehicle_type}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <Badge 
+                      variant="outline" 
+                      className={`status-badge-${partner.status.replace('_', '-')}`}
+                    >
+                      {partner.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{partner.eta}</p>
-                  <Badge 
-                    variant="outline" 
-                    className={`status-badge-${partner.status.replace('_', '-')}`}
-                  >
-                    {partner.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

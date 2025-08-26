@@ -1,17 +1,5 @@
 
-import { useState } from "react";
-import { 
-  Home,
-  Upload,
-  Users,
-  MapPin,
-  BarChart3,
-  Settings,
-  Truck,
-  FileText,
-  Zap
-} from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Home, BarChart3, Upload, Users, MapPin, Settings, History, Truck } from "lucide-react"
 
 import {
   Sidebar,
@@ -22,112 +10,79 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+  SidebarHeader,
+  SidebarFooter,
+} from "@/components/ui/sidebar"
 
-const adminItems = [
-  { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Upload Orders", url: "/upload", icon: Upload },
-  { title: "Partners", url: "/partners", icon: Users },
-  { title: "Jobs", url: "/jobs", icon: BarChart3 },
-  { title: "Live Map", url: "/map", icon: MapPin },
-];
-
-const driverItems = [
-  { title: "My Routes", url: "/driver", icon: Truck },
-  { title: "Job History", url: "/driver/history", icon: FileText },
-];
-
-const settingsItems = [
-  { title: "Settings", url: "/settings", icon: Settings },
-];
+// Menu items.
+const items = [
+  {
+    title: "Home",
+    url: "/",
+    icon: Home,
+  },
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: BarChart3,
+  },
+  {
+    title: "Upload Orders",
+    url: "/upload",
+    icon: Upload,
+  },
+  {
+    title: "Optimization Jobs",
+    url: "/jobs",
+    icon: BarChart3,
+  },
+  {
+    title: "Job History",
+    url: "/job-history",
+    icon: History,
+  },
+  {
+    title: "Partners",
+    url: "/partners",
+    icon: Users,
+  },
+  {
+    title: "Live Map",
+    url: "/map",
+    icon: MapPin,
+  },
+  {
+    title: "Driver App",
+    url: "/driver",
+    icon: Truck,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
+]
 
 export function AppSidebar() {
-  const { state } = useSidebar();
-  const location = useLocation();
-  const currentPath = location.pathname;
-  
-  const isCollapsed = state === "collapsed";
-
-  const isActive = (path: string) => currentPath === path || currentPath.startsWith(path + '/');
-  
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-accent ${
-      isActive 
-        ? "bg-quantum-gradient text-white shadow-md" 
-        : "text-muted-foreground hover:text-foreground"
-    }`;
-
   return (
-    <Sidebar
-      className={isCollapsed ? "w-14" : "w-64"}
-      collapsible="icon"
-    >
-      <SidebarContent className="bg-sidebar">
-        {/* Logo section */}
-        <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-quantum-gradient rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <h2 className="font-semibold text-sidebar-foreground">Quantum Fleet</h2>
-                <p className="text-xs text-sidebar-foreground/70">Optimization Platform</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Admin Section */}
+    <Sidebar>
+      <SidebarHeader className="p-4">
+        <h2 className="text-lg font-bold bg-quantum-gradient bg-clip-text text-transparent">
+          QuantumFleet
+        </h2>
+      </SidebarHeader>
+      <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Driver Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Driver</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {driverItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Settings */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -135,6 +90,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4">
+        <p className="text-xs text-muted-foreground">
+          Quantum-powered fleet optimization
+        </p>
+      </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

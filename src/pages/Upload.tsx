@@ -3,6 +3,8 @@ import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +19,9 @@ import {
   AlertCircle,
   Download,
   Eye,
-  Save
+  Save,
+  Key,
+  Play
 } from "lucide-react";
 
 interface ParsedData {
@@ -33,12 +37,48 @@ const Upload = () => {
   const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
   const { toast } = useToast();
 
   // Initialize storage on component mount
   useEffect(() => {
     initializeStorage();
   }, []);
+
+  const downloadDemoFile = () => {
+    // Create demo CSV content
+    const demoOrders = `external_id,pickup_name,pickup_lat,pickup_lng,drop_name,drop_lat,drop_lng,priority,weight,service_minutes
+ORD-001,Restaurant A,19.0760,72.8777,Customer Location 1,19.0896,72.8656,1,2.5,10
+ORD-002,Restaurant B,19.1136,72.8697,Customer Location 2,19.0330,72.8570,2,1.8,8
+ORD-003,Restaurant C,19.0500,72.8500,Customer Location 3,19.1200,72.9000,3,3.2,12
+ORD-004,Restaurant D,19.0800,72.8800,Customer Location 4,19.0400,72.8400,1,1.5,6
+ORD-005,Restaurant E,19.0900,72.8900,Customer Location 5,19.0600,72.8600,2,2.1,9`;
+
+    const demoPartners = `name,vehicle_type,capacity,shift_start,shift_end,phone,email
+Rahul Kumar,bike,8,09:00,18:00,+91-9876543210,rahul@example.com
+Priya Singh,scooter,12,10:00,19:00,+91-9876543211,priya@example.com
+Amit Patel,car,20,08:00,17:00,+91-9876543212,amit@example.com`;
+
+    // Create workbook with multiple sheets
+    const csvContent = `Orders Sheet:\n${demoOrders}\n\nPartners Sheet:\n${demoPartners}`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'demo-orders-partners.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    toast({
+      title: "Demo file downloaded!",
+      description: "You can now upload this file to test the AI parsing functionality",
+    });
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -64,6 +104,73 @@ const Upload = () => {
     e.preventDefault();
     if (e.target.files && e.target.files[0]) {
       handleFiles(e.target.files);
+    }
+  };
+
+  const parseWithAI = async (fileContent: string, fileName: string) => {
+    if (!apiKey) {
+      throw new Error("OpenRouter API key is required for AI parsing");
+    }
+
+    const prompt = `You are an AI assistant that parses delivery orders and partner data from CSV/Excel files. 
+    
+Please analyze the following file content and extract:
+1. Orders data with fields: external_id, pickup_name, pickup_lat, pickup_lng, drop_name, drop_lat, drop_lng, priority, weight, service_minutes
+2. Partners data with fields: name, vehicle_type, capacity, shift_start, shift_end, phone, email
+
+File name: ${fileName}
+File content:
+${fileContent}
+
+Please respond in JSON format:
+{
+  "orders": [...],
+  "partners": [...],
+  "warnings": [...]
+}`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'Quantum Fleet AI Parser'
+      },
+      body: JSON.stringify({
+        model: 'qwen/qwen-2.5-7b-instruct',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content;
+    
+    if (!aiResponse) {
+      throw new Error("No response from AI model");
+    }
+
+    // Parse the JSON response
+    try {
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Could not extract JSON from AI response");
+      }
+      
+      return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+      console.error("Error parsing AI response:", aiResponse);
+      throw new Error("Failed to parse AI response as JSON");
     }
   };
 
@@ -103,6 +210,17 @@ const Upload = () => {
       return;
     }
 
+    // Check if API key is provided for AI parsing
+    if (!apiKey) {
+      setShowApiKeyInput(true);
+      toast({
+        title: "API Key Required",
+        description: "Please enter your OpenRouter API key to enable AI parsing",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
     setParsedData(null);
@@ -113,43 +231,44 @@ const Upload = () => {
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
-          if (prev >= 90) {
+          if (prev >= 50) {
             clearInterval(progressInterval);
-            return 90;
+            return 50;
           }
           return prev + 10;
         });
       }, 200);
 
-      // Upload and parse file
-      const result: UploadResult = await uploadAndParseFile(file);
+      // Read file content
+      const fileContent = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+
+      setUploadProgress(70);
+      setParsing(true);
+
+      // Parse with AI
+      const aiResult = await parseWithAI(fileContent, file.name);
       
       setUploadProgress(100);
       clearInterval(progressInterval);
       
-      if (result.success && result.data) {
-        console.log('File processed successfully:', result.data);
-        
-        setParsing(true);
-        
-        // Simulate AI parsing delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setParsedData({
-          orders: result.data.orders,
-          partners: result.data.partners,
-          errors: [],
-          warnings: result.data.warnings || []
-        });
-        
-        toast({
-          title: "File parsed successfully!",
-          description: `Found ${result.data.orders.length} orders and ${result.data.partners.length} partners`,
-        });
-      } else {
-        console.error('File processing failed:', result.error);
-        throw new Error(result.error || 'Failed to process file');
-      }
+      console.log('AI parsing result:', aiResult);
+      
+      setParsedData({
+        orders: aiResult.orders || [],
+        partners: aiResult.partners || [],
+        errors: [],
+        warnings: aiResult.warnings || []
+      });
+      
+      toast({
+        title: "File parsed successfully!",
+        description: `Found ${aiResult.orders?.length || 0} orders and ${aiResult.partners?.length || 0} partners`,
+      });
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -218,6 +337,50 @@ const Upload = () => {
     }
   };
 
+  const handleCreateJob = async () => {
+    if (!parsedData) return;
+
+    try {
+      setCreatingJob(true);
+      
+      // Create a new optimization job
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .insert({
+          org_id: '00000000-0000-0000-0000-000000000000',
+          name: `Optimization Job - ${new Date().toLocaleDateString()}`,
+          status: 'pending',
+          total_orders: parsedData.orders.length,
+          assigned_partners: parsedData.partners.length,
+          optimization_type: 'route'
+        })
+        .select()
+        .single();
+
+      if (jobError) throw jobError;
+
+      toast({
+        title: "Optimization job created!",
+        description: "Redirecting to jobs page to monitor progress...",
+      });
+
+      // Redirect to jobs page
+      setTimeout(() => {
+        window.location.href = '/jobs';
+      }, 2000);
+
+    } catch (error) {
+      console.error('Job creation error:', error);
+      toast({
+        title: "Job creation failed",
+        description: "There was an error creating the optimization job",
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingJob(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
@@ -233,8 +396,64 @@ const Upload = () => {
         </p>
       </div>
 
+      {/* API Key Input */}
+      {showApiKeyInput && (
+        <Card className="border-warning-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-warning-700">
+              <Key className="w-5 h-5" />
+              OpenRouter API Key Required
+            </CardTitle>
+            <CardDescription>
+              Enter your OpenRouter API key to enable AI-powered parsing with Qwen 2.5 7B Instruct model
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API Key</Label>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="Enter your OpenRouter API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Get your API key from <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="text-primary underline">openrouter.ai</a>
+              </p>
+            </div>
+            <Button 
+              onClick={() => setShowApiKeyInput(false)} 
+              disabled={!apiKey}
+              className="gap-2"
+            >
+              <Key className="w-4 h-4" />
+              Save API Key
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {!parsedData ? (
         <div className="space-y-6">
+          {/* Demo File Download */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Demo File</h3>
+                  <p className="text-muted-foreground">
+                    Download a sample CSV file to test the AI parsing functionality
+                  </p>
+                </div>
+                <Button variant="outline" onClick={downloadDemoFile} className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Download Demo File
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Upload Area */}
           <Card>
             <CardContent className="p-8">
@@ -278,7 +497,7 @@ const Upload = () => {
                       <div className="flex items-center justify-center gap-2">
                         <Sparkles className="w-4 h-4 animate-spin" />
                         <span className="text-sm text-muted-foreground">
-                          Processing your data
+                          Processing with Qwen 2.5 7B Instruct
                         </span>
                       </div>
                     </div>
@@ -308,7 +527,7 @@ const Upload = () => {
                 AI-Powered Data Processing
               </CardTitle>
               <CardDescription>
-                Our advanced AI system will automatically parse and validate your data
+                Our advanced AI system will automatically parse and validate your data using Qwen 2.5 7B Instruct
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -360,13 +579,17 @@ const Upload = () => {
                     <Eye className="w-4 h-4" />
                     Preview
                   </Button>
-                  <Button variant="outline" className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Export
-                  </Button>
                   <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white gap-2">
                     <Save className="w-4 h-4" />
                     Save to Database
+                  </Button>
+                  <Button 
+                    onClick={handleCreateJob} 
+                    disabled={creatingJob}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    {creatingJob ? 'Creating...' : 'Create Optimization Job'}
                   </Button>
                 </div>
               </div>
