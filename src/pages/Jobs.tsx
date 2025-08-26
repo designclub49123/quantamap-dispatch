@@ -53,7 +53,15 @@ const Jobs = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setJobs(data || []);
+      
+      // Filter out any test data and only show real jobs
+      const realJobs = (data || []).filter(job => 
+        job.name && 
+        job.name !== 'Test Job' && 
+        job.total_orders > 0
+      );
+      
+      setJobs(realJobs);
     } catch (error) {
       console.error('Error fetching jobs:', error);
     } finally {
