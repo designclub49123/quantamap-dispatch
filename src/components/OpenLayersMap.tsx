@@ -36,7 +36,11 @@ interface Order {
   drop_location?: string;
 }
 
-const OpenLayersMap: React.FC = () => {
+interface OpenLayersMapProps {
+  selectedPartnerId?: string;
+}
+
+const OpenLayersMap: React.FC<OpenLayersMapProps> = ({ selectedPartnerId }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -77,10 +81,13 @@ const OpenLayersMap: React.FC = () => {
   }, [mapLoaded]);
 
   useEffect(() => {
-    if (mapInstanceRef.current && partners.length > 0) {
-      updateMapMarkers();
+    if (selectedPartnerId) {
+      const partner = partners.find(p => p.id === selectedPartnerId);
+      if (partner) {
+        setSelectedPartner(partner);
+      }
     }
-  }, [partners, orders, selectedPartner]);
+  }, [selectedPartnerId, partners]);
 
   const fetchData = async () => {
     try {
@@ -452,7 +459,7 @@ const OpenLayersMap: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {selectedPartner && (
+              {selectedPartner && !selectedPartnerId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -527,7 +534,7 @@ const OpenLayersMap: React.FC = () => {
       </Card>
 
       {/* Partner Status */}
-      {!selectedPartner && (
+      {!selectedPartner && !selectedPartnerId && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {partners.map(partner => {
             const inAP = isInAndhraPradesh(partner.current_lat, partner.current_lng);

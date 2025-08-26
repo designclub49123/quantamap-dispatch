@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, MapPin, Truck, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -48,6 +48,7 @@ const Map = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [markers, setMarkers] = useState<{ [key: string]: L.Marker }>({});
   const [selectedPartner, setSelectedPartner] = useState<DeliveryPartner | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -71,8 +72,14 @@ const Map = () => {
 
       if (ordersError) throw ordersError;
 
-      setPartners(partnersData || []);
-      setOrders(ordersData || []);
+      // Filter to only show AP partners and AP orders
+      const apPartners = partnersData?.filter(p => isInAndhraPradesh(p.current_lat, p.current_lng)) || [];
+      const apOrders = ordersData?.filter(o => 
+        isInAndhraPradesh(o.pickup_lat, o.pickup_lng) || isInAndhraPradesh(o.drop_lat, o.drop_lng)
+      ) || [];
+
+      setPartners(apPartners);
+      setOrders(apOrders);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -139,7 +146,7 @@ const Map = () => {
       // Center map on selected partner
       map.current.setView([selectedPartner.current_lat, selectedPartner.current_lng], 10);
     } else {
-      // Show all partners
+      // Show all partners with "View on Map" buttons
       partners.forEach(partner => {
         const inAP = isInAndhraPradesh(partner.current_lat, partner.current_lng);
         const partnerIcon = L.divIcon({
@@ -161,7 +168,8 @@ const Map = () => {
               <p class="text-sm text-gray-600">${partner.vehicle_type} • ${partner.status}</p>
               <p class="text-sm ${inAP ? 'text-green-600' : 'text-red-600'}">${partner.location_name || 'Unknown Location'}</p>
               ${!inAP ? '<p class="text-xs text-red-600 font-bold">⚠️ No delivery service</p>' : ''}
-              <button onclick="window.selectPartner('${partner.id}')" class="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded">View Details</button>
+              <button onclick="window.viewPartnerMap('${partner.id}')" class="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded">View on Map</button>
+              <button onclick="window.selectPartner('${partner.id}')" class="mt-2 ml-1 px-2 py-1 bg-green-500 text-white text-xs rounded">View Details</button>
             </div>
           `);
 
@@ -243,14 +251,18 @@ const Map = () => {
 
     setMarkers(newMarkers);
 
-    // Add global function for partner selection
+    // Add global functions for partner selection and map viewing
     (window as any).selectPartner = (partnerId: string) => {
       const partner = partners.find(p => p.id === partnerId);
       if (partner) {
         setSelectedPartner(partner);
       }
     };
-  }, [partners, orders, selectedPartner]);
+
+    (window as any).viewPartnerMap = (partnerId: string) => {
+      navigate(`/partners/${partnerId}/map`);
+    };
+  }, [partners, orders, selectedPartner, navigate]);
 
   const toggleSimulation = () => {
     setIsSimulating(!isSimulating);
