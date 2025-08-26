@@ -107,10 +107,12 @@ const OpenLayersMap: React.FC = () => {
   const initializeMap = () => {
     if (!window.ol || !mapRef.current) return;
 
-    const { Map, View } = window.ol;
-    const { OSM } = window.ol.source;
-    const { Tile as TileLayer } = window.ol.layer;
-    const { fromLonLat } = window.ol.proj;
+    const ol = window.ol;
+    const Map = ol.Map;
+    const View = ol.View;
+    const OSM = ol.source.OSM;
+    const TileLayer = ol.layer.Tile;
+    const fromLonLat = ol.proj.fromLonLat;
 
     // Create map instance
     mapInstanceRef.current = new Map({
@@ -130,12 +132,16 @@ const OpenLayersMap: React.FC = () => {
   const updateMapMarkers = () => {
     if (!window.ol || !mapInstanceRef.current) return;
 
-    const { Vector as VectorLayer } = window.ol.layer;
-    const { Vector as VectorSource } = window.ol.source;
-    const { Feature } = window.ol;
-    const { Point, LineString } = window.ol.geom;
-    const { Style, Icon, Stroke } = window.ol.style;
-    const { fromLonLat } = window.ol.proj;
+    const ol = window.ol;
+    const VectorLayer = ol.layer.Vector;
+    const VectorSource = ol.source.Vector;
+    const Feature = ol.Feature;
+    const Point = ol.geom.Point;
+    const LineString = ol.geom.LineString;
+    const Style = ol.style.Style;
+    const Icon = ol.style.Icon;
+    const Stroke = ol.style.Stroke;
+    const fromLonLat = ol.proj.fromLonLat;
 
     // Clear existing vector layers
     const layers = mapInstanceRef.current.getLayers().getArray();
@@ -259,7 +265,7 @@ const OpenLayersMap: React.FC = () => {
 
   const resetView = () => {
     if (mapInstanceRef.current) {
-      const { fromLonLat } = window.ol.proj;
+      const fromLonLat = window.ol.proj.fromLonLat;
       mapInstanceRef.current.getView().setCenter(fromLonLat([78.9629, 20.5937]));
       mapInstanceRef.current.getView().setZoom(6);
     }
