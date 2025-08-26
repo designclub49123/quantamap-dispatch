@@ -22,7 +22,8 @@ import {
   Users,
   Loader2,
   TrendingUp,
-  Zap
+  Zap,
+  AlertTriangle
 } from "lucide-react";
 
 interface Job {
