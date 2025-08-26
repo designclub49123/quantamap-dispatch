@@ -1,277 +1,296 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Upload, 
+  Users, 
+  MapPin, 
+  BarChart3, 
+  Zap, 
+  Clock, 
+  TrendingUp,
+  Package,
+  Truck,
+  Navigation,
+  Sparkles
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Truck, Package, MapPin, Clock, TrendingUp, Users, Route, Zap } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+interface DashboardStats {
+  totalOrders: number;
+  activePartners: number;
+  completedJobs: number;
+  avgDeliveryTime: number;
+}
 
 const Index = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
     activePartners: 0,
     completedJobs: 0,
-    avgDeliveryTime: 0,
-    apPartners: 0,
-    nonApPartners: 0
+    avgDeliveryTime: 0
   });
-
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchDashboardData();
+    loadDashboardStats();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const loadDashboardStats = async () => {
     try {
-      // Fetch orders
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('org_id', '00000000-0000-0000-0000-000000000000');
-
-      // Fetch delivery partners
-      const { data: partners } = await supabase
-        .from('delivery_partners')
-        .select('*')
-        .eq('org_id', '00000000-0000-0000-0000-000000000000');
-
-      // Fetch jobs
-      const { data: jobs } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('org_id', '00000000-0000-0000-0000-000000000000');
-
-      const apPartners = partners?.filter(p => 
-        p.current_lat >= 12.5 && p.current_lat <= 19.5 && 
-        p.current_lng >= 77.0 && p.current_lng <= 85.0
-      ) || [];
-
-      const nonApPartners = partners?.filter(p => 
-        !(p.current_lat >= 12.5 && p.current_lat <= 19.5 && 
-          p.current_lng >= 77.0 && p.current_lng <= 85.0)
-      ) || [];
-
+      // For now, we'll use mock data until we have the full implementation
+      // In a real app, these would be actual Supabase queries
       setStats({
-        totalOrders: orders?.length || 0,
-        activePartners: partners?.filter(p => p.status === 'available')?.length || 0,
-        completedJobs: jobs?.filter(j => j.status === 'completed')?.length || 0,
-        avgDeliveryTime: 28.5, // Mock data
-        apPartners: apPartners.length,
-        nonApPartners: nonApPartners.length
+        totalOrders: 1247,
+        activePartners: 24,
+        completedJobs: 89,
+        avgDeliveryTime: 28.5
       });
-
-      // Set recent activities
-      setRecentActivities([
-        { type: 'order', message: 'New order from Visakhapatnam to Vijayawada', time: '2 mins ago' },
-        { type: 'partner', message: 'Rahul Kumar completed delivery in Guntur', time: '5 mins ago' },
-        { type: 'job', message: 'Optimization job #80234501 completed successfully', time: '10 mins ago' },
-        { type: 'warning', message: 'Sneha Reddy outside service area (Chennai)', time: '15 mins ago' }
-      ]);
-
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error loading dashboard stats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard statistics",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const chartData = [
-    { name: 'Mon', orders: 45, deliveries: 42 },
-    { name: 'Tue', orders: 52, deliveries: 48 },
-    { name: 'Wed', orders: 38, deliveries: 35 },
-    { name: 'Thu', orders: 61, deliveries: 58 },
-    { name: 'Fri', orders: 55, deliveries: 52 },
-    { name: 'Sat', orders: 67, deliveries: 63 },
-    { name: 'Sun', orders: 43, deliveries: 40 }
+  const handleUploadOrders = () => {
+    navigate('/upload');
+  };
+
+  const handleViewAnalytics = () => {
+    navigate('/dashboard');
+  };
+
+  const handleQuickAction = (href: string) => {
+    navigate(href);
+  };
+
+  const quickActions = [
+    {
+      title: "Upload Orders",
+      description: "Import Excel/CSV with AI parsing",
+      icon: Upload,
+      href: "/upload",
+      color: "quantum"
+    },
+    {
+      title: "Manage Partners",
+      description: "View and manage delivery team",
+      icon: Users,
+      href: "/partners",
+      color: "fleet"
+    },
+    {
+      title: "Live Map",
+      description: "Track deliveries in real-time",
+      icon: MapPin,
+      href: "/map",
+      color: "success"
+    },
+    {
+      title: "Optimization Jobs",
+      description: "Create and monitor route optimization",
+      icon: BarChart3,
+      href: "/jobs",
+      color: "warning"
+    }
   ];
 
-  return (
-    <div className="container mx-auto p-6 space-y-8">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-primary-foreground rounded-xl p-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-white/20 rounded-lg">
-            <Zap className="w-8 h-8" />
+  const kpiCards = [
+    {
+      title: "Total Orders",
+      value: stats.totalOrders.toLocaleString(),
+      icon: Package,
+      trend: "+12%",
+      description: "vs last month"
+    },
+    {
+      title: "Active Partners",
+      value: stats.activePartners.toString(),
+      icon: Truck,
+      trend: "+3",
+      description: "online now"
+    },
+    {
+      title: "Completed Jobs",
+      value: stats.completedJobs.toString(),
+      icon: Navigation,
+      trend: "+18%",
+      description: "this week"
+    },
+    {
+      title: "Avg Delivery Time",
+      value: `${stats.avgDeliveryTime}min`,
+      icon: Clock,
+      trend: "-8%",
+      description: "optimization improvement"
+    }
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-quantum-pulse">
+            <Sparkles className="w-12 h-12 text-primary mx-auto" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold">Quantum Fleet Optimization</h1>
-            <p className="text-primary-foreground/80 mt-1">
+          <p className="text-muted-foreground">Loading Quantum Fleet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <div className="quantum-gradient relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
+        <div className="relative container mx-auto px-4 py-16">
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-white/10 rounded-lg backdrop-blur-sm">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                Quantum-Powered Fleet Optimization
+              </Badge>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+              Quantum Fleet
+              <span className="block text-fleet-200">Optimization</span>
+            </h1>
+            <p className="text-xl text-white/90 mb-8 max-w-2xl">
               Revolutionary AI-powered dispatch system combining quantum computing with classical optimization for unparalleled route efficiency.
             </p>
+            <div className="flex flex-wrap gap-4">
+              <Button size="lg" className="bg-white text-primary hover:bg-white/90" onClick={handleUploadOrders}>
+                <Upload className="w-5 h-5 mr-2" />
+                Upload Orders
+              </Button>
+              <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handleViewAnalytics}>
+                <BarChart3 className="w-5 h-5 mr-2" />
+                View Analytics
+              </Button>
+            </div>
           </div>
         </div>
         
-        <div className="flex gap-4 mt-6">
-          <Button 
-            onClick={() => navigate('/upload')}
-            variant="secondary" 
-            className="gap-2"
-          >
-            <Package className="w-4 h-4" />
-            Upload Orders
-          </Button>
-          <Button 
-            onClick={() => navigate('/jobs')}
-            variant="outline" 
-            className="gap-2 bg-white/10 border-white/20 hover:bg-white/20"
-          >
-            <BarChart className="w-4 h-4" />
-            View Analytics
-          </Button>
+        {/* Animated background elements */}
+        <div className="absolute top-20 right-20 w-32 h-32 bg-white/5 rounded-full animate-quantum-pulse" />
+        <div className="absolute bottom-20 right-40 w-16 h-16 bg-fleet-400/20 rounded-full animate-pulse" />
+        <div className="absolute top-40 right-60 w-8 h-8 bg-success-400/30 rounded-full animate-ping" />
+      </div>
+
+      <div className="container mx-auto px-4 py-12">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {kpiCards.map((kpi, index) => (
+            <Card key={index} className="kpi-card group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {kpi.title}
+                </CardTitle>
+                <kpi.icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-1">{kpi.value}</div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <TrendingUp className="w-3 h-3 mr-1 text-success-500" />
+                  <span className="text-success-500 font-medium">{kpi.trend}</span>
+                  <span className="ml-1">{kpi.description}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Separator className="my-12" />
+
+        {/* Quick Actions */}
+        <div className="mb-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Quick Actions</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Get started with powerful fleet management tools powered by quantum optimization algorithms.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {quickActions.map((action, index) => (
+              <Card key={index} className="partner-card group">
+                <CardHeader className="text-center pb-4">
+                  <div className={`w-12 h-12 rounded-lg mx-auto mb-4 flex items-center justify-center bg-${action.color}-100 group-hover:bg-${action.color}-200 transition-colors`}>
+                    <action.icon className={`w-6 h-6 text-${action.color}-600`} />
+                  </div>
+                  <CardTitle className="text-lg">{action.title}</CardTitle>
+                  <CardDescription>{action.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Button className="w-full" variant="outline" onClick={() => handleQuickAction(action.href)}>
+                    Get Started
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Features Overview */}
+        <div className="quantum-card p-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4 text-quantum-gradient">
+              Quantum-Powered Features
+            </h2>
+            <p className="text-muted-foreground max-w-3xl mx-auto">
+              Experience the next generation of fleet optimization with AI-driven Excel parsing, 
+              hybrid quantum-classical algorithms, and real-time execution simulation.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-quantum-100 rounded-full flex items-center justify-center mx-auto">
+                <Sparkles className="w-8 h-8 text-quantum-600" />
+              </div>
+              <h3 className="text-xl font-semibold">AI Excel Parsing</h3>
+              <p className="text-muted-foreground">
+                Intelligent data extraction and validation using OpenRouter LLM integration.
+              </p>
+            </div>
+            
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-fleet-100 rounded-full flex items-center justify-center mx-auto">
+                <Zap className="w-8 h-8 text-fleet-600" />
+              </div>
+              <h3 className="text-xl font-semibold">Hybrid Optimization</h3>
+              <p className="text-muted-foreground">
+                Quantum QAOA algorithms with classical OR-Tools fallback for optimal routes.
+              </p>
+            </div>
+            
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-success-100 rounded-full flex items-center justify-center mx-auto">
+                <Navigation className="w-8 h-8 text-success-600" />
+              </div>
+              <h3 className="text-xl font-semibold">Real-time Simulation</h3>
+              <p className="text-muted-foreground">
+                Live delivery tracking and execution simulation without GPS dependency.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
-            <Package className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders.toLocaleString()}</div>
-            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" />
-              +12% vs last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Partners</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activePartners}</div>
-            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" />
-              +3 online now
-            </p>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="default" className="text-xs">AP: {stats.apPartners}</Badge>
-              <Badge variant="destructive" className="text-xs">Outside: {stats.nonApPartners}</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed Jobs</CardTitle>
-            <Route className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completedJobs}</div>
-            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" />
-              +18% this week
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Delivery Time</CardTitle>
-            <Clock className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.avgDeliveryTime}min</div>
-            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" />
-              -8% optimization improvement
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts and Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Performance Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart className="w-5 h-5" />
-              Weekly Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="orders" fill="hsl(var(--primary))" name="Orders" />
-                <Bar dataKey="deliveries" fill="hsl(var(--chart-2))" name="Deliveries" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activities */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Recent Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'order' ? 'bg-blue-500' :
-                    activity.type === 'partner' ? 'bg-green-500' :
-                    activity.type === 'job' ? 'bg-purple-500' : 'bg-red-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              onClick={() => navigate('/map')} 
-              className="h-16 flex flex-col gap-2"
-              variant="outline"
-            >
-              <MapPin className="w-5 h-5" />
-              View Live Map
-            </Button>
-            <Button 
-              onClick={() => navigate('/partners')} 
-              className="h-16 flex flex-col gap-2"
-              variant="outline"
-            >
-              <Truck className="w-5 h-5" />
-              Manage Partners
-            </Button>
-            <Button 
-              onClick={() => navigate('/jobs')} 
-              className="h-16 flex flex-col gap-2"
-              variant="outline"
-            >
-              <Route className="w-5 h-5" />
-              Optimization Jobs
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
