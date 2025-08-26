@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,34 +23,36 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SidebarProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/upload" element={<Upload />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/jobs/:jobId" element={<JobDetail />} />
-              <Route path="/job-history" element={<JobHistory />} />
-              <Route path="/partners" element={<Partners />} />
-              <Route path="/partners/:partnerId" element={<PartnerDetail />} />
-              <Route path="/partners/:partnerId/map" element={<PartnerMap />} />
-              <Route path="/driver" element={<Driver />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/map" element={<Map />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SidebarProvider>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/upload" element={<Upload />} />
+                <Route path="/jobs" element={<Jobs />} />
+                <Route path="/jobs/:jobId" element={<JobDetail />} />
+                <Route path="/job-history" element={<JobHistory />} />
+                <Route path="/partners" element={<Partners />} />
+                <Route path="/partners/:partnerId" element={<PartnerDetail />} />
+                <Route path="/partners/:partnerId/map" element={<PartnerMap />} />
+                <Route path="/driver" element={<Driver />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/map" element={<Map />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+          </SidebarProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
