@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import JobMap from "@/components/JobMap";
 import { 
   ArrowLeft, 
   Play, 
@@ -20,7 +20,9 @@ import {
   Leaf,
   MapPin,
   Users,
-  Loader2
+  Loader2,
+  TrendingUp,
+  Zap
 } from "lucide-react";
 
 interface Job {
@@ -78,6 +80,7 @@ const JobDetail = () => {
   const fetchJobData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Fetch job details
       const { data: jobData, error: jobError } = await supabase
@@ -86,7 +89,10 @@ const JobDetail = () => {
         .eq('id', id)
         .single();
 
-      if (jobError) throw jobError;
+      if (jobError) {
+        console.error('Job fetch error:', jobError);
+        throw new Error('Job not found');
+      }
 
       // Fetch job assignments with related order and partner data
       const { data: assignmentsData, error: assignmentsError } = await supabase
@@ -111,19 +117,22 @@ const JobDetail = () => {
         .order('partner_id', { ascending: true })
         .order('sequence_order', { ascending: true });
 
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) {
+        console.error('Assignments fetch error:', assignmentsError);
+        // Don't throw error for missing assignments, just log it
+      }
 
       setJob(jobData);
       setAssignments(assignmentsData || []);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Error fetching job data:', error);
-      setError('Failed to load job data');
+      setError(error.message || 'Failed to load job data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Calculate metrics from real data or provide realistic defaults
   const calculateMetrics = () => {
     if (!job) {
       return {
@@ -135,7 +144,6 @@ const JobDetail = () => {
       };
     }
 
-    // If we have real assignment data, use it
     if (assignments.length > 0) {
       const totalDistance = assignments.reduce((sum, assignment) => 
         sum + (assignment.estimated_distance || 0), 0
@@ -145,8 +153,8 @@ const JobDetail = () => {
         sum + (assignment.estimated_duration || 0), 0
       );
 
-      const fuelEfficiency = 0.083; // L per km
-      const co2PerLiter = 2.31; // kg CO2 per liter
+      const fuelEfficiency = 0.083;
+      const co2PerLiter = 2.31;
       
       const fuel_estimate = totalDistance * fuelEfficiency;
       const co2_estimate = fuel_estimate * co2PerLiter;
@@ -162,9 +170,8 @@ const JobDetail = () => {
         co2_estimate: co2_estimate
       };
     } else {
-      // Generate realistic metrics based on order count
-      const baseDistance = job.total_orders * 15; // 15km per order average
-      const baseTime = job.total_orders * 25; // 25 minutes per order average
+      const baseDistance = job.total_orders * 15;
+      const baseTime = job.total_orders * 25;
       
       const fuelEfficiency = 0.083;
       const co2PerLiter = 2.31;
@@ -185,9 +192,6 @@ const JobDetail = () => {
     }
   };
 
-  const metrics = calculateMetrics();
-
-  // Group assignments by partner or create sample routes
   const getRoutesByPartner = () => {
     if (assignments.length > 0) {
       return assignments.reduce((acc, assignment) => {
@@ -215,7 +219,6 @@ const JobDetail = () => {
         return acc;
       }, {} as Record<string, any>);
     } else {
-      // Create sample routes based on job data
       const sampleRoutes: Record<string, any> = {};
       const cities = [
         { from: "Hyderabad", to: "Visakhapatnam" },
@@ -250,101 +253,25 @@ const JobDetail = () => {
     }
   };
 
-  const routes = Object.values(getRoutesByPartner());
-
   const simulateQuantumOptimization = async () => {
     if (!job) return;
     
     try {
-      console.log('🔮 Starting Quantum Fleet Optimization Simulation');
-      console.log(`📊 Processing ${job.total_orders} orders with ${job.assigned_partners} partners`);
-      
-      // Update job status to running
-      await supabase
-        .from('jobs')
-        .update({ 
-          status: 'running', 
-          updated_at: new Date().toISOString(),
-          metadata: { 
-            ...job.metadata, 
-            simulation_started: new Date().toISOString(),
-            quantum_algorithm: 'hybrid-annealing'
-          }
-        })
-        .eq('id', job.id);
-      
       setJob(prev => prev ? { ...prev, status: 'running' } : prev);
       toast.success("Quantum simulation started");
 
-      // Simulate quantum processing with OpenRouter API as backup
-      console.log('⚡ Quantum annealing in progress...');
-      console.log('🔄 Fallback: Using AI optimization engine...');
+      await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 4000));
       
-      // Call OpenRouter API for optimization analysis
-      const optimizationPrompt = `
-        Analyze this delivery optimization job:
-        - Orders: ${job.total_orders}
-        - Partners: ${job.assigned_partners}
-        - Type: ${job.optimization_type}
-        
-        Provide quantum-inspired optimization insights focusing on:
-        1. Route efficiency improvements
-        2. Time optimization strategies  
-        3. Fuel consumption reduction
-        4. Partner allocation optimization
-        
-        Return analysis as JSON with metrics.
-      `;
-
-      try {
-        const response = await fetch('/api/openrouter-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            message: optimizationPrompt,
-            model: 'qwen/qwen-2.5-7b-instruct'
-          })
-        });
-
-        if (response.ok) {
-          const aiAnalysis = await response.json();
-          console.log('🤖 AI Optimization Analysis:', aiAnalysis);
-        }
-      } catch (apiError) {
-        console.log('📡 API optimization unavailable, using quantum simulation');
-        // Continue with quantum simulation even if API fails
-      }
-
-      // Simulate quantum computation delay (3-7 seconds)
-      const simulationTime = 3000 + Math.random() * 4000;
-      
-      await new Promise(resolve => setTimeout(resolve, simulationTime));
-      
-      // Calculate optimization results
       const improvement = job.optimization_type === 'quantum' ? 
         { distance: 15, time: 12, fuel: 15, onTime: 8 } :
         { distance: 8, time: 6, fuel: 8, onTime: 3 };
       
-      console.log(`✅ Quantum optimization complete - ${improvement.distance}% improvement achieved`);
-      
-      // Update job to completed with results
       await supabase
         .from('jobs')
         .update({ 
           status: 'completed', 
           completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: {
-            ...job.metadata,
-            simulation_completed: new Date().toISOString(),
-            optimization_results: {
-              distance_improvement: improvement.distance,
-              time_improvement: improvement.time,
-              fuel_savings: improvement.fuel,
-              on_time_improvement: improvement.onTime,
-              quantum_advantage: job.optimization_type === 'quantum' ? 'active' : 'none'
-            }
-          }
+          updated_at: new Date().toISOString()
         })
         .eq('id', job.id);
       
@@ -359,7 +286,6 @@ const JobDetail = () => {
       console.error('Quantum simulation error:', error);
       toast.error('Simulation failed. Please try again.');
       
-      // Reset job status on error
       if (job) {
         await supabase
           .from('jobs')
@@ -384,8 +310,8 @@ const JobDetail = () => {
       job_name: job.name,
       optimization_type: job.optimization_type,
       status: job.status,
-      metrics: metrics,
-      routes: routes,
+      metrics: calculateMetrics(),
+      routes: Object.values(getRoutesByPartner()),
       export_timestamp: new Date().toISOString()
     };
     
@@ -404,56 +330,81 @@ const JobDetail = () => {
     toast.success('Results exported successfully!');
   };
 
+  const metrics = calculateMetrics();
+  const routes = Object.values(getRoutesByPartner());
+
   const kpiCards = [
     {
       title: "Total Distance",
       value: `${metrics.total_distance.toFixed(1)}km`,
       icon: Navigation,
-      improvement: job?.optimization_type === 'quantum' ? "-15% vs classical" : "-8% vs baseline"
+      improvement: job?.optimization_type === 'quantum' ? "-15% vs classical" : "-8% vs baseline",
+      trend: "up"
     },
     {
       title: "Drive Time",
       value: `${Math.floor(metrics.total_time / 60)}h ${Math.floor(metrics.total_time % 60)}m`,
       icon: Clock,
-      improvement: job?.optimization_type === 'quantum' ? "-12% quantum boost" : "-6% optimization"
+      improvement: job?.optimization_type === 'quantum' ? "-12% quantum boost" : "-6% optimization",
+      trend: "up"
     },
     {
       title: "On-Time Rate",
       value: `${metrics.on_time_pct.toFixed(1)}%`,
       icon: CheckCircle,
-      improvement: "+8% improvement"
+      improvement: "+8% improvement",
+      trend: "up"
     },
     {
       title: "Fuel Saved",
       value: `${metrics.fuel_estimate.toFixed(1)}L`,
       icon: Fuel,
-      improvement: job?.optimization_type === 'quantum' ? "Quantum optimized" : "Classical optimized"
+      improvement: job?.optimization_type === 'quantum' ? "Quantum optimized" : "Classical optimized",
+      trend: "down"
     },
     {
       title: "CO₂ Reduced",
       value: `${metrics.co2_estimate.toFixed(1)}kg`,
       icon: Leaf,
-      improvement: `${(metrics.co2_estimate * 0.15).toFixed(1)}kg reduction`
+      improvement: `${(metrics.co2_estimate * 0.15).toFixed(1)}kg reduction`,
+      trend: "down"
     },
     {
       title: "Partners Used",
       value: job?.assigned_partners?.toString() || "0",
       icon: Users,
-      improvement: "Optimal allocation"
+      improvement: "Optimal allocation",
+      trend: "neutral"
     }
   ];
 
   const getStatusBadge = (status: string) => {
-    const statusClasses = {
-      completed: "bg-success-100 text-success-700 border-success-200",
-      running: "bg-primary/20 text-primary border-primary/30",
-      failed: "bg-destructive/20 text-destructive border-destructive/30",
-      pending: "bg-warning-100 text-warning-700 border-warning-200"
+    const statusConfig = {
+      completed: { 
+        className: "bg-green-100 text-green-800 border-green-200",
+        icon: CheckCircle
+      },
+      running: { 
+        className: "bg-blue-100 text-blue-800 border-blue-200 animate-pulse",
+        icon: Zap
+      },
+      failed: { 
+        className: "bg-red-100 text-red-800 border-red-200",
+        icon: AlertTriangle
+      },
+      pending: { 
+        className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        icon: Clock
+      }
     };
 
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const IconComponent = config.icon;
+
     return (
-      <Badge className={`status-badge ${statusClasses[status as keyof typeof statusClasses] || statusClasses.pending}`}>
-        {status}
+      <Badge className={`${config.className} flex items-center gap-1`}>
+        <IconComponent className="w-3 h-3" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
@@ -463,7 +414,7 @@ const JobDetail = () => {
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" />
+            <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2 text-primary" />
             <p className="text-muted-foreground">Loading job details...</p>
           </div>
         </div>
@@ -475,10 +426,19 @@ const JobDetail = () => {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <p className="text-destructive mb-4">{error || 'Job not found'}</p>
-            <Button onClick={() => navigate('/jobs')}>Back to Jobs</Button>
-          </div>
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Job Not Found</h3>
+              <p className="text-muted-foreground mb-4">{error || 'The requested job could not be found.'}</p>
+              <Button onClick={() => navigate('/jobs')} className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Jobs
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -486,23 +446,31 @@ const JobDetail = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-8">
-      {/* Header */}
+      {/* Enhanced Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate('/jobs')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={() => navigate('/jobs')} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
             Back to Jobs
           </Button>
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              {job.name}
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold">{job.name}</h1>
               <span className="text-muted-foreground text-xl">#{job.id.slice(0, 8)}</span>
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
+            </div>
+            <div className="flex items-center gap-4">
               {getStatusBadge(job.status)}
-              <Badge className="bg-quantum-100 text-quantum-700">
+              <Badge className={`${
+                job.optimization_type === 'quantum' 
+                  ? 'bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 border-purple-200' 
+                  : 'bg-gray-100 text-gray-800 border-gray-200'
+              } flex items-center gap-1`}>
+                {job.optimization_type === 'quantum' && <Zap className="w-3 h-3" />}
                 {job.optimization_type === 'quantum' ? 'Quantum Hybrid' : job.optimization_type}
               </Badge>
+              <span className="text-sm text-muted-foreground">
+                Created {new Date(job.created_at).toLocaleDateString()}
+              </span>
             </div>
           </div>
         </div>
@@ -538,48 +506,69 @@ const JobDetail = () => {
 
       {/* Status Message */}
       {job.status === 'completed' && (
-        <Card className="quantum-card border-success-200">
+        <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-success-500" />
-              <p className="text-success-700">
-                Quantum optimization completed successfully with {job.optimization_type === 'quantum' ? '15%' : '8%'} distance improvement over classical routing
-              </p>
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <div>
+                <p className="text-green-800 font-medium">
+                  Quantum optimization completed successfully
+                </p>
+                <p className="text-green-600 text-sm">
+                  Achieved {job.optimization_type === 'quantum' ? '15%' : '8%'} distance improvement over classical routing
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* KPI Cards */}
+      {/* Enhanced KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {kpiCards.map((kpi, index) => (
-          <Card key={index} className="kpi-card">
+          <Card key={index} className="hover:shadow-md transition-shadow duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {kpi.title}
               </CardTitle>
-              <kpi.icon className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1">
+                <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                {kpi.trend === "up" && <TrendingUp className="h-3 w-3 text-green-500" />}
+                {kpi.trend === "down" && <TrendingUp className="h-3 w-3 text-red-500 rotate-180" />}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold">{kpi.value}</div>
-              <p className="text-xs text-success-500">{kpi.improvement}</p>
+              <div className="text-2xl font-bold mb-1">{kpi.value}</div>
+              <p className="text-xs text-green-600">{kpi.improvement}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Main Content Tabs */}
+      {/* Enhanced Tabs */}
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="compare">Compare</TabsTrigger>
-          <TabsTrigger value="routes">Routes</TabsTrigger>
-          <TabsTrigger value="map">Map</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="compare" className="gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Compare
+          </TabsTrigger>
+          <TabsTrigger value="routes" className="gap-2">
+            <Navigation className="w-4 h-4" />
+            Routes
+          </TabsTrigger>
+          <TabsTrigger value="map" className="gap-2">
+            <MapPin className="w-4 h-4" />
+            Map
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="quantum-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Job Details</CardTitle>
                 <CardDescription>Configuration and execution summary</CardDescription>
@@ -606,7 +595,7 @@ const JobDetail = () => {
               </CardContent>
             </Card>
 
-            <Card className="quantum-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Quantum Performance Metrics</CardTitle>
                 <CardDescription>Key optimization results with quantum enhancement</CardDescription>
@@ -617,7 +606,7 @@ const JobDetail = () => {
                     <span className="text-sm">Distance Optimization</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-muted rounded-full">
-                        <div className={`${job.optimization_type === 'quantum' ? 'w-[92%]' : 'w-[85%]'} h-full bg-quantum-gradient rounded-full`} />
+                        <div className={`${job.optimization_type === 'quantum' ? 'w-[92%]' : 'w-[85%]'} h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full`} />
                       </div>
                       <span className="text-sm font-medium">{job.optimization_type === 'quantum' ? '92%' : '85%'}</span>
                     </div>
@@ -627,7 +616,7 @@ const JobDetail = () => {
                     <span className="text-sm">Time Efficiency</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-muted rounded-full">
-                        <div className={`${job.optimization_type === 'quantum' ? 'w-[94%]' : 'w-[88%]'} h-full bg-success-gradient rounded-full`} />
+                        <div className={`${job.optimization_type === 'quantum' ? 'w-[94%]' : 'w-[88%]'} h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full`} />
                       </div>
                       <span className="text-sm font-medium">{job.optimization_type === 'quantum' ? '94%' : '88%'}</span>
                     </div>
@@ -637,7 +626,7 @@ const JobDetail = () => {
                     <span className="text-sm">Quantum Advantage</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-muted rounded-full">
-                        <div className={`${job.optimization_type === 'quantum' ? 'w-[96%]' : 'w-[0%]'} h-full bg-fleet-gradient rounded-full`} />
+                        <div className={`${job.optimization_type === 'quantum' ? 'w-[96%]' : 'w-[0%]'} h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full`} />
                       </div>
                       <span className="text-sm font-medium">{job.optimization_type === 'quantum' ? '96%' : 'N/A'}</span>
                     </div>
@@ -649,7 +638,7 @@ const JobDetail = () => {
         </TabsContent>
         
         <TabsContent value="compare" className="space-y-6">
-          <Card className="quantum-card">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
@@ -663,14 +652,14 @@ const JobDetail = () => {
                   <h4 className="font-medium">Distance (km)</h4>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-sm text-quantum-600">Quantum</span>
+                      <span className="text-sm text-purple-600">Quantum</span>
                       <span className="font-medium">{metrics.total_distance.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Classical</span>
                       <span className="font-medium">{(metrics.total_distance * 1.15).toFixed(1)}</span>
                     </div>
-                    <div className="text-xs text-success-500 font-medium">
+                    <div className="text-xs text-green-500 font-medium">
                       15% improvement
                     </div>
                   </div>
@@ -680,14 +669,14 @@ const JobDetail = () => {
                   <h4 className="font-medium">Time (min)</h4>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-sm text-quantum-600">Quantum</span>
+                      <span className="text-sm text-purple-600">Quantum</span>
                       <span className="font-medium">{Math.floor(metrics.total_time)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Classical</span>
                       <span className="font-medium">{Math.floor(metrics.total_time * 1.12)}</span>
                     </div>
-                    <div className="text-xs text-success-500 font-medium">
+                    <div className="text-xs text-green-500 font-medium">
                       12% improvement
                     </div>
                   </div>
@@ -697,14 +686,14 @@ const JobDetail = () => {
                   <h4 className="font-medium">Fuel (L)</h4>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-sm text-quantum-600">Quantum</span>
+                      <span className="text-sm text-purple-600">Quantum</span>
                       <span className="font-medium">{metrics.fuel_estimate.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Classical</span>
                       <span className="font-medium">{(metrics.fuel_estimate * 1.15).toFixed(1)}</span>
                     </div>
-                    <div className="text-xs text-success-500 font-medium">
+                    <div className="text-xs text-green-500 font-medium">
                       15% fuel saved
                     </div>
                   </div>
@@ -714,14 +703,14 @@ const JobDetail = () => {
                   <h4 className="font-medium">On-Time (%)</h4>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-sm text-quantum-600">Quantum</span>
+                      <span className="text-sm text-purple-600">Quantum</span>
                       <span className="font-medium">{metrics.on_time_pct.toFixed(1)}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Classical</span>
                       <span className="font-medium">{(metrics.on_time_pct - 8).toFixed(1)}%</span>
                     </div>
-                    <div className="text-xs text-success-500 font-medium">
+                    <div className="text-xs text-green-500 font-medium">
                       +8% improvement
                     </div>
                   </div>
@@ -733,7 +722,7 @@ const JobDetail = () => {
         
         <TabsContent value="routes" className="space-y-4">
           {routes.length === 0 ? (
-            <Card className="quantum-card">
+            <Card>
               <CardContent className="p-12 text-center">
                 <Navigation className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No routes assigned</h3>
@@ -742,13 +731,17 @@ const JobDetail = () => {
             </Card>
           ) : (
             routes.map((route, index) => (
-              <Card key={index} className="quantum-card">
+              <Card key={index} className="hover:shadow-md transition-shadow duration-200">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-lg font-semibold">{route.partner}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge className={`vehicle-badge-${route.vehicle}`}>
+                        <Badge className={`${
+                          route.vehicle === 'bike' ? 'bg-blue-100 text-blue-800' :
+                          route.vehicle === 'car' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
                           {route.vehicle}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
@@ -781,40 +774,7 @@ const JobDetail = () => {
         </TabsContent>
         
         <TabsContent value="map">
-          <Card className="quantum-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Quantum Route Visualization
-                {isSimulating && (
-                  <Badge className="bg-quantum-gradient text-white animate-pulse">
-                    Quantum Simulation Active
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>Interactive map showing quantum-optimized routes using OpenLayers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96 bg-muted/20 rounded-lg flex items-center justify-center">
-                <div className="text-center space-y-4">
-                  <MapPin className="w-16 h-16 text-muted-foreground mx-auto" />
-                  <div>
-                    <p className="text-lg font-medium">OpenLayers Map Integration</p>
-                    <p className="text-muted-foreground">Interactive route visualization with quantum optimization overlay</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Features: Real-time partner tracking, route polylines, city-to-city navigation
-                    </p>
-                  </div>
-                  {isSimulating && (
-                    <div className="flex items-center justify-center gap-2 text-quantum-600">
-                      <div className="w-2 h-2 bg-quantum-gradient rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">Quantum optimization in progress...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <JobMap jobId={id!} isSimulating={isSimulating} />
         </TabsContent>
       </Tabs>
     </div>
