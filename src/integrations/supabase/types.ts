@@ -22,6 +22,7 @@ export type Database = {
           current_lng: number | null
           email: string | null
           id: string
+          location_name: string | null
           name: string
           org_id: string
           phone: string | null
@@ -38,6 +39,7 @@ export type Database = {
           current_lng?: number | null
           email?: string | null
           id?: string
+          location_name?: string | null
           name: string
           org_id: string
           phone?: string | null
@@ -54,6 +56,7 @@ export type Database = {
           current_lng?: number | null
           email?: string | null
           id?: string
+          location_name?: string | null
           name?: string
           org_id?: string
           phone?: string | null
@@ -183,6 +186,7 @@ export type Database = {
           created_at: string
           drop_lat: number
           drop_lng: number
+          drop_location: string | null
           drop_name: string
           external_id: string
           id: string
@@ -190,6 +194,7 @@ export type Database = {
           org_id: string
           pickup_lat: number
           pickup_lng: number
+          pickup_location: string | null
           pickup_name: string
           priority: number | null
           service_minutes: number | null
@@ -203,6 +208,7 @@ export type Database = {
           created_at?: string
           drop_lat: number
           drop_lng: number
+          drop_location?: string | null
           drop_name: string
           external_id: string
           id?: string
@@ -210,6 +216,7 @@ export type Database = {
           org_id: string
           pickup_lat: number
           pickup_lng: number
+          pickup_location?: string | null
           pickup_name: string
           priority?: number | null
           service_minutes?: number | null
@@ -223,6 +230,7 @@ export type Database = {
           created_at?: string
           drop_lat?: number
           drop_lng?: number
+          drop_location?: string | null
           drop_name?: string
           external_id?: string
           id?: string
@@ -230,6 +238,7 @@ export type Database = {
           org_id?: string
           pickup_lat?: number
           pickup_lng?: number
+          pickup_location?: string | null
           pickup_name?: string
           priority?: number | null
           service_minutes?: number | null

@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, RotateCcw, MapPin, Truck } from 'lucide-react';
+import { Play, Pause, RotateCcw, MapPin, Truck, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Fix for default markers
@@ -23,6 +23,7 @@ interface DeliveryPartner {
   status: string;
   current_lat: number;
   current_lng: number;
+  location_name?: string;
 }
 
 interface Order {
@@ -35,6 +36,8 @@ interface Order {
   drop_lat: number;
   drop_lng: number;
   status: string;
+  pickup_location?: string;
+  drop_location?: string;
 }
 
 const Map = () => {
@@ -44,6 +47,7 @@ const Map = () => {
   const [partners, setPartners] = useState<DeliveryPartner[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [markers, setMarkers] = useState<{ [key: string]: L.Marker }>({});
+  const [selectedPartner, setSelectedPartner] = useState<DeliveryPartner | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -74,11 +78,16 @@ const Map = () => {
     }
   };
 
+  const isInAndhraPradesh = (lat: number, lng: number): boolean => {
+    // Rough bounds of Andhra Pradesh
+    return lat >= 12.5 && lat <= 19.5 && lng >= 77.0 && lng <= 85.0;
+  };
+
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Initialize map
-    map.current = L.map(mapContainer.current).setView([19.0760, 72.8777], 12);
+    // Initialize map centered on Andhra Pradesh
+    map.current = L.map(mapContainer.current).setView([15.9129, 79.7400], 7);
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -100,38 +109,79 @@ const Map = () => {
     Object.values(markers).forEach(marker => marker.remove());
     const newMarkers: { [key: string]: L.Marker } = {};
 
-    // Add partner markers
-    partners.forEach(partner => {
+    if (selectedPartner) {
+      // Show only selected partner and their orders
+      const inAP = isInAndhraPradesh(selectedPartner.current_lat, selectedPartner.current_lng);
       const partnerIcon = L.divIcon({
         className: 'custom-marker',
         html: `
-          <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
-            ${partner.vehicle_type === 'bike' ? '🏍️' : partner.vehicle_type === 'car' ? '🚗' : '🛵'}
+          <div class="bg-${inAP ? 'green' : 'red'}-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold border-3 border-white shadow-lg">
+            ${selectedPartner.vehicle_type === 'bike' ? '🏍️' : selectedPartner.vehicle_type === 'car' ? '🚗' : '🛵'}
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
       });
 
-      const marker = L.marker([partner.current_lat, partner.current_lng], { icon: partnerIcon })
+      const marker = L.marker([selectedPartner.current_lat, selectedPartner.current_lng], { icon: partnerIcon })
         .addTo(map.current!)
         .bindPopup(`
           <div class="p-2">
-            <h3 class="font-semibold">${partner.name}</h3>
-            <p class="text-sm text-gray-600">${partner.vehicle_type} • ${partner.status}</p>
+            <h3 class="font-semibold">${selectedPartner.name}</h3>
+            <p class="text-sm text-gray-600">${selectedPartner.vehicle_type} • ${selectedPartner.status}</p>
+            <p class="text-sm ${inAP ? 'text-green-600' : 'text-red-600'}">${selectedPartner.location_name || 'Unknown Location'}</p>
+            ${!inAP ? '<p class="text-xs text-red-600 font-bold">⚠️ No delivery service outside AP</p>' : ''}
           </div>
         `);
 
-      newMarkers[`partner-${partner.id}`] = marker;
-    });
+      newMarkers[`partner-${selectedPartner.id}`] = marker;
+
+      // Center map on selected partner
+      map.current.setView([selectedPartner.current_lat, selectedPartner.current_lng], 10);
+    } else {
+      // Show all partners
+      partners.forEach(partner => {
+        const inAP = isInAndhraPradesh(partner.current_lat, partner.current_lng);
+        const partnerIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `
+            <div class="bg-${inAP ? 'blue' : 'red'}-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg cursor-pointer">
+              ${partner.vehicle_type === 'bike' ? '🏍️' : partner.vehicle_type === 'car' ? '🚗' : '🛵'}
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([partner.current_lat, partner.current_lng], { icon: partnerIcon })
+          .addTo(map.current!)
+          .bindPopup(`
+            <div class="p-2">
+              <h3 class="font-semibold">${partner.name}</h3>
+              <p class="text-sm text-gray-600">${partner.vehicle_type} • ${partner.status}</p>
+              <p class="text-sm ${inAP ? 'text-green-600' : 'text-red-600'}">${partner.location_name || 'Unknown Location'}</p>
+              ${!inAP ? '<p class="text-xs text-red-600 font-bold">⚠️ No delivery service</p>' : ''}
+              <button onclick="window.selectPartner('${partner.id}')" class="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded">View Details</button>
+            </div>
+          `);
+
+        newMarkers[`partner-${partner.id}`] = marker;
+      });
+    }
 
     // Add order markers
     orders.forEach(order => {
+      const pickupInAP = isInAndhraPradesh(order.pickup_lat, order.pickup_lng);
+      const dropInAP = isInAndhraPradesh(order.drop_lat, order.drop_lng);
+
+      // Skip orders completely outside AP unless viewing specific partner
+      if (!selectedPartner && !pickupInAP && !dropInAP) return;
+
       // Pickup marker
       const pickupIcon = L.divIcon({
         className: 'custom-marker',
         html: `
-          <div class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
+          <div class="bg-${pickupInAP ? 'green' : 'orange'}-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
             P
           </div>
         `,
@@ -146,6 +196,7 @@ const Map = () => {
             <h3 class="font-semibold">Pickup: ${order.pickup_name}</h3>
             <p class="text-sm text-gray-600">Order: ${order.external_id}</p>
             <p class="text-sm text-gray-600">Status: ${order.status}</p>
+            <p class="text-sm ${pickupInAP ? 'text-green-600' : 'text-orange-600'}">${order.pickup_location || 'Unknown Location'}</p>
           </div>
         `);
 
@@ -153,7 +204,7 @@ const Map = () => {
       const dropIcon = L.divIcon({
         className: 'custom-marker',
         html: `
-          <div class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
+          <div class="bg-${dropInAP ? 'red' : 'orange'}-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
             D
           </div>
         `,
@@ -168,6 +219,7 @@ const Map = () => {
             <h3 class="font-semibold">Drop: ${order.drop_name}</h3>
             <p class="text-sm text-gray-600">Order: ${order.external_id}</p>
             <p class="text-sm text-gray-600">Status: ${order.status}</p>
+            <p class="text-sm ${dropInAP ? 'text-green-600' : 'text-orange-600'}">${order.drop_location || 'Unknown Location'}</p>
           </div>
         `);
 
@@ -175,46 +227,72 @@ const Map = () => {
       newMarkers[`drop-${order.id}`] = dropMarker;
 
       // Draw route line between pickup and drop
+      const routeColor = (!pickupInAP || !dropInAP) ? '#f59e0b' :
+                        order.status === 'completed' ? '#22c55e' : 
+                        order.status === 'assigned' ? '#3b82f6' : '#6b7280';
+
       const routeLine = L.polyline([
         [order.pickup_lat, order.pickup_lng],
         [order.drop_lat, order.drop_lng]
       ], {
-        color: order.status === 'completed' ? '#22c55e' : order.status === 'assigned' ? '#3b82f6' : '#6b7280',
+        color: routeColor,
         weight: 3,
         opacity: 0.7
       }).addTo(map.current!);
     });
 
     setMarkers(newMarkers);
-  }, [partners, orders]);
+
+    // Add global function for partner selection
+    (window as any).selectPartner = (partnerId: string) => {
+      const partner = partners.find(p => p.id === partnerId);
+      if (partner) {
+        setSelectedPartner(partner);
+      }
+    };
+  }, [partners, orders, selectedPartner]);
 
   const toggleSimulation = () => {
     setIsSimulating(!isSimulating);
     if (!isSimulating) {
-      // Start simulation - move partners randomly
+      // Start simulation - move partners randomly within AP bounds
       const interval = setInterval(() => {
         setPartners(prevPartners => 
-          prevPartners.map(partner => ({
-            ...partner,
-            current_lat: partner.current_lat + (Math.random() - 0.5) * 0.001,
-            current_lng: partner.current_lng + (Math.random() - 0.5) * 0.001
-          }))
+          prevPartners.map(partner => {
+            const latChange = (Math.random() - 0.5) * 0.01;
+            const lngChange = (Math.random() - 0.5) * 0.01;
+            const newLat = Math.max(12.5, Math.min(19.5, partner.current_lat + latChange));
+            const newLng = Math.max(77.0, Math.min(85.0, partner.current_lng + lngChange));
+            
+            return {
+              ...partner,
+              current_lat: newLat,
+              current_lng: newLng
+            };
+          })
         );
       }, 2000);
 
-      // Store interval in a ref or state to clear it later
+      // Stop after 30 seconds
       setTimeout(() => {
         clearInterval(interval);
         setIsSimulating(false);
-      }, 30000); // Stop after 30 seconds
+      }, 30000);
     }
   };
 
   const resetView = () => {
     if (map.current) {
-      map.current.setView([19.0760, 72.8777], 12);
+      if (selectedPartner) {
+        map.current.setView([selectedPartner.current_lat, selectedPartner.current_lng], 10);
+      } else {
+        map.current.setView([15.9129, 79.7400], 7);
+      }
     }
   };
+
+  const apPartners = partners.filter(p => isInAndhraPradesh(p.current_lat, p.current_lng));
+  const nonApPartners = partners.filter(p => !isInAndhraPradesh(p.current_lat, p.current_lng));
 
   return (
     <div className="space-y-6">
@@ -223,8 +301,22 @@ const Map = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {selectedPartner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPartner(null)}
+                  className="mr-2"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back to All
+                </Button>
+              )}
               <MapPin className="w-5 h-5" />
-              Live Map Controls
+              {selectedPartner 
+                ? `${selectedPartner.name} - ${selectedPartner.location_name}`
+                : 'Andhra Pradesh Live Map'
+              }
             </div>
             <div className="flex gap-2">
               <Button 
@@ -243,18 +335,22 @@ const Map = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">Delivery Partners ({partners.length})</span>
+              <span className="text-sm">AP Partners ({apPartners.length})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+              <span className="text-sm">Outside AP ({nonApPartners.length})</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-500 rounded-full"></div>
               <span className="text-sm">Pickup Points ({orders.length})</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-              <span className="text-sm">Drop Points ({orders.length})</span>
+              <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+              <span className="text-sm">Out of Range</span>
             </div>
           </div>
         </CardContent>
@@ -268,26 +364,45 @@ const Map = () => {
       </Card>
 
       {/* Partner Status */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {partners.map(partner => (
-          <Card key={partner.id} className="partner-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">{partner.name}</h3>
-                <Truck className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div className="space-y-1">
-                <Badge className={`vehicle-badge-${partner.vehicle_type}`}>
-                  {partner.vehicle_type}
-                </Badge>
-                <Badge className={`status-badge-${partner.status.replace('_', '-')}`}>
-                  {partner.status}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {!selectedPartner && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {partners.map(partner => {
+            const inAP = isInAndhraPradesh(partner.current_lat, partner.current_lng);
+            return (
+              <Card 
+                key={partner.id} 
+                className={`cursor-pointer transition-all hover:shadow-md ${inAP ? 'border-green-200' : 'border-red-200'}`}
+                onClick={() => setSelectedPartner(partner)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-sm">{partner.name}</h3>
+                    <Truck className={`w-4 h-4 ${inAP ? 'text-green-600' : 'text-red-600'}`} />
+                  </div>
+                  <div className="space-y-1">
+                    <Badge variant={inAP ? "default" : "destructive"} className="text-xs">
+                      {partner.location_name || 'Unknown Location'}
+                    </Badge>
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className="text-xs">
+                        {partner.vehicle_type}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {partner.status}
+                      </Badge>
+                    </div>
+                    {!inAP && (
+                      <p className="text-xs text-red-600 font-medium">
+                        ⚠️ No delivery service
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
