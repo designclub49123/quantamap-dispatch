@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface DeliveryPartner {
   status: string;
   current_lat: number;
   current_lng: number;
+  location_name?: string;
 }
 
 interface Order {
