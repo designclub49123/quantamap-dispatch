@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,7 @@ import JobHistory from "./pages/JobHistory";
 import Upload from "./pages/Upload";
 import Partners from "./pages/Partners";
 import PartnerDetail from "./pages/PartnerDetail";
+import PartnerMap from "./pages/PartnerMap";
 import Driver from "./pages/Driver";
 import Map from "./pages/Map";
 import Settings from "./pages/Settings";
@@ -38,6 +38,7 @@ const App = () => (
               <Route path="/upload" element={<Upload />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/partners/:id" element={<PartnerDetail />} />
+              <Route path="/partner-map/:id" element={<PartnerMap />} />
               <Route path="/driver" element={<Driver />} />
               <Route path="/map" element={<Map />} />
               <Route path="/settings" element={<Settings />} />

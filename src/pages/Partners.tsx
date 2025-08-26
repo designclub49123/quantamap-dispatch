@@ -1,122 +1,95 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Filter, 
-  Users, 
-  Plus,
-  MapPin,
-  Clock,
-  TrendingUp,
-  Star
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Truck, Search, MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { isWithinAP } from '@/data/apLocations';
+import { toast } from 'sonner';
 
-interface Partner {
+interface DeliveryPartner {
   id: string;
   name: string;
-  vehicle_type: 'bike' | 'scooter' | 'car' | 'van' | 'truck';
-  capacity: number;
-  shift_start: string;
-  shift_end: string;
-  active: boolean;
-  assigned_today: number;
-  success_rate: number;
-  avg_delivery_time: number;
-  location?: string;
+  vehicle_type: string;
+  status: string;
+  current_lat: number;
+  current_lng: number;
+  phone?: string;
+  email?: string;
+  capacity?: number;
+  shift_start?: string;
+  shift_end?: string;
+  location_name?: string;
 }
 
 const Partners = () => {
+  const [partners, setPartners] = useState<DeliveryPartner[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterVehicle, setFilterVehicle] = useState<string>("all");
 
-  // Mock data - in real app, this would come from Supabase
-  const partners: Partner[] = [
-    {
-      id: "p1",
-      name: "Rahul Kumar",
-      vehicle_type: "bike",
-      capacity: 8,
-      shift_start: "09:00",
-      shift_end: "18:00",
-      active: true,
-      assigned_today: 12,
-      success_rate: 97.5,
-      avg_delivery_time: 24.3,
-      location: "Andheri West"
-    },
-    {
-      id: "p2",
-      name: "Priya Singh",
-      vehicle_type: "scooter",
-      capacity: 12,
-      shift_start: "10:00",
-      shift_end: "19:00",
-      active: true,
-      assigned_today: 8,
-      success_rate: 95.2,
-      avg_delivery_time: 26.1,
-      location: "Bandra East"
-    },
-    {
-      id: "p3",
-      name: "Amit Patel",
-      vehicle_type: "car",
-      capacity: 20,
-      shift_start: "08:00",
-      shift_end: "17:00",
-      active: false,
-      assigned_today: 0,
-      success_rate: 92.8,
-      avg_delivery_time: 31.5,
-      location: "Powai"
-    },
-    {
-      id: "p4",
-      name: "Sneha Reddy",
-      vehicle_type: "bike",
-      capacity: 10,
-      shift_start: "11:00",
-      shift_end: "20:00",
-      active: true,
-      assigned_today: 15,
-      success_rate: 98.1,
-      avg_delivery_time: 22.7,
-      location: "Koramangala"
-    },
-    {
-      id: "p5",
-      name: "Vikash Singh",
-      vehicle_type: "van",
-      capacity: 35,
-      shift_start: "07:00",
-      shift_end: "16:00",
-      active: true,
-      assigned_today: 3,
-      success_rate: 89.4,
-      avg_delivery_time: 45.2,
-      location: "Whitefield"
+  useEffect(() => {
+    fetchPartners();
+  }, []);
+
+  const fetchPartners = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('delivery_partners')
+        .select('*')
+        .eq('org_id', '00000000-0000-0000-0000-000000000000')
+        .order('name');
+
+      if (error) throw error;
+
+      // Filter partners within AP boundaries
+      const validPartners = (data || []).filter(partner => {
+        const withinAP = isWithinAP(partner.current_lat, partner.current_lng);
+        if (!withinAP) {
+          console.warn(`Partner ${partner.name} is outside AP boundaries`);
+        }
+        return withinAP;
+      });
+
+      setPartners(validPartners);
+    } catch (error) {
+      console.error('Error fetching partners:', error);
+      toast.error('Failed to load delivery partners');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const filteredPartners = partners.filter(partner => {
-    const matchesSearch = partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         partner.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesVehicle = filterVehicle === "all" || partner.vehicle_type === filterVehicle;
-    return matchesSearch && matchesVehicle;
-  });
-
-  const stats = {
-    total: partners.length,
-    active: partners.filter(p => p.active).length,
-    avgSuccessRate: partners.reduce((acc, p) => acc + p.success_rate, 0) / partners.length,
-    totalAssigned: partners.reduce((acc, p) => acc + p.assigned_today, 0)
   };
+
+  const filteredPartners = partners.filter(partner =>
+    partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    partner.vehicle_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    partner.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleViewOnMap = (partnerId: string) => {
+    navigate(`/partner-map/${partnerId}`);
+  };
+
+  const handlePartnerDetail = (partnerId: string) => {
+    navigate(`/partners/${partnerId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="h-[400px] w-full rounded-lg flex items-center justify-center bg-muted/20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-muted-foreground">Loading delivery partners...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-8">
@@ -124,186 +97,158 @@ const Partners = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="p-2 bg-fleet-gradient rounded-lg">
-              <Users className="w-6 h-6 text-white" />
+            <div className="p-2 bg-primary rounded-lg">
+              <Truck className="w-6 h-6 text-primary-foreground" />
             </div>
             Delivery Partners
           </h1>
           <p className="text-muted-foreground mt-2">
-            Manage your delivery team and track performance metrics
+            Manage and track delivery partners in Andhra Pradesh
           </p>
         </div>
-        <Button className="quantum-gradient text-white gap-2">
-          <Plus className="w-4 h-4" />
-          Add Partner
-        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="kpi-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Partners
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.active} active today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="kpi-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Success Rate
-            </CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.avgSuccessRate.toFixed(1)}%</div>
-            <p className="text-xs text-success-500 flex items-center">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              +2.1% vs last week
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="kpi-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Orders Today
-            </CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAssigned}</div>
-            <p className="text-xs text-muted-foreground">
-              Assigned deliveries
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="kpi-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Delivery Time
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">26.4min</div>
-            <p className="text-xs text-success-500 flex items-center">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              -5% improvement
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card className="quantum-card">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search partners or locations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={filterVehicle}
-                onChange={(e) => setFilterVehicle(e.target.value)}
-                className="px-3 py-2 rounded-md border border-input bg-background text-sm"
-              >
-                <option value="all">All Vehicles</option>
-                <option value="bike">Bike</option>
-                <option value="scooter">Scooter</option>
-                <option value="car">Car</option>
-                <option value="van">Van</option>
-                <option value="truck">Truck</option>
-              </select>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="w-4 h-4" />
-                More Filters
-              </Button>
+      {/* Search and Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Partners</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search by name, vehicle type, or status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Partners List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* Partners Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPartners.map((partner) => (
-          <Card 
-            key={partner.id} 
-            className="partner-card"
-            onClick={() => navigate(`/partners/${partner.id}`)}
-          >
-            <CardHeader className="pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-quantum-gradient rounded-full flex items-center justify-center">
-                    <span className="text-white font-medium">
-                      {partner.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{partner.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className={`vehicle-badge-${partner.vehicle_type}`}>
-                        {partner.vehicle_type}
-                      </Badge>
-                      <Badge 
-                        variant={partner.active ? "default" : "secondary"}
-                        className={partner.active ? "bg-success-100 text-success-700" : ""}
-                      >
-                        {partner.active ? "Online" : "Offline"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+          <Card key={partner.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{partner.name}</CardTitle>
+                <Badge 
+                  variant={partner.status === 'available' ? 'default' : 
+                          partner.status === 'busy' ? 'destructive' : 'secondary'}
+                >
+                  {partner.status}
+                </Badge>
               </div>
             </CardHeader>
-            
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>{partner.location}</span>
-              </div>
-              
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>{partner.shift_start} - {partner.shift_end}</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">{partner.vehicle_type}</span>
+                  <Badge variant="outline" className="text-xs">
+                    Capacity: {partner.capacity || 8}
+                  </Badge>
+                </div>
+                
+                {partner.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{partner.phone}</span>
+                  </div>
+                )}
+                
+                {partner.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{partner.email}</span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">{partner.location_name || 'Andhra Pradesh'}</span>
+                </div>
+                
+                {partner.shift_start && partner.shift_end && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {partner.shift_start} - {partner.shift_end}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4 pt-2">
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{partner.assigned_today}</div>
-                  <div className="text-xs text-muted-foreground">Today</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{partner.success_rate}%</div>
-                  <div className="text-xs text-muted-foreground">Success</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{partner.avg_delivery_time}min</div>
-                  <div className="text-xs text-muted-foreground">Avg Time</div>
-                </div>
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => handlePartnerDetail(partner.id)}
+                >
+                  View Details
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="flex-1 gap-1"
+                  onClick={() => handleViewOnMap(partner.id)}
+                >
+                  <MapPin className="w-3 h-3" />
+                  View on Map
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {filteredPartners.length === 0 && !loading && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              {searchTerm ? 'No partners found matching your search.' : 'No delivery partners found in Andhra Pradesh.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Summary Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Partners Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{partners.length}</div>
+              <div className="text-sm text-muted-foreground">Total Partners</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {partners.filter(p => p.status === 'available').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Available</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {partners.filter(p => p.status === 'busy').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Busy</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {partners.filter(p => p.status === 'offline').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Offline</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
