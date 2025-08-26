@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,13 +21,15 @@ import { useNavigate } from "react-router-dom";
 interface Job {
   id: string;
   name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: string;
   optimization_type: string;
   total_orders: number;
   assigned_partners: number;
   created_at: string;
-  completed_at?: string;
+  updated_at: string;
+  completed_at: string | null;
   metadata: any;
+  org_id: string;
 }
 
 const Jobs = () => {
@@ -74,7 +75,7 @@ const Jobs = () => {
     avgTime: 12.5 // minutes - could be calculated from actual data
   };
 
-  const getStatusIcon = (status: Job['status']) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-success-500" />;
@@ -87,7 +88,7 @@ const Jobs = () => {
     }
   };
 
-  const getStatusBadge = (status: Job['status']) => {
+  const getStatusBadge = (status: string) => {
     const statusClasses = {
       pending: "bg-warning-100 text-warning-700 border-warning-200",
       running: "bg-primary/20 text-primary border-primary/30 animate-pulse",
@@ -96,7 +97,7 @@ const Jobs = () => {
     };
 
     return (
-      <Badge className={`status-badge ${statusClasses[status]}`}>
+      <Badge className={`status-badge ${statusClasses[status as keyof typeof statusClasses] || statusClasses.pending}`}>
         {status.replace('_', ' ')}
       </Badge>
     );
