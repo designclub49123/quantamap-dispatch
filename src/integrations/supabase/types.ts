@@ -14,7 +14,232 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      delivery_partners: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          current_lat: number | null
+          current_lng: number | null
+          email: string | null
+          id: string
+          name: string
+          org_id: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          email?: string | null
+          id?: string
+          name: string
+          org_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          current_lat?: number | null
+          current_lng?: number | null
+          email?: string | null
+          id?: string
+          name?: string
+          org_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
+      job_assignments: {
+        Row: {
+          actual_arrival: string | null
+          created_at: string
+          distance_km: number | null
+          duration_minutes: number | null
+          estimated_arrival: string | null
+          id: string
+          job_id: string
+          order_id: string
+          partner_id: string
+          sequence: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_arrival?: string | null
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          estimated_arrival?: string | null
+          id?: string
+          job_id: string
+          order_id: string
+          partner_id: string
+          sequence: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_arrival?: string | null
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          estimated_arrival?: string | null
+          id?: string
+          job_id?: string
+          order_id?: string
+          partner_id?: string
+          sequence?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          actual_time: number | null
+          assigned_partners: number | null
+          completed_at: string | null
+          cost_savings: number | null
+          created_at: string
+          estimated_time: number | null
+          id: string
+          name: string
+          optimization_type: string
+          org_id: string | null
+          status: string
+          total_distance: number | null
+          total_orders: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_time?: number | null
+          assigned_partners?: number | null
+          completed_at?: string | null
+          cost_savings?: number | null
+          created_at?: string
+          estimated_time?: number | null
+          id?: string
+          name: string
+          optimization_type?: string
+          org_id?: string | null
+          status?: string
+          total_distance?: number | null
+          total_orders?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_time?: number | null
+          assigned_partners?: number | null
+          completed_at?: string | null
+          cost_savings?: number | null
+          created_at?: string
+          estimated_time?: number | null
+          id?: string
+          name?: string
+          optimization_type?: string
+          org_id?: string | null
+          status?: string
+          total_distance?: number | null
+          total_orders?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          dimensions: string | null
+          drop_address: string
+          drop_lat: number | null
+          drop_lng: number | null
+          id: string
+          order_number: string
+          org_id: string | null
+          pickup_address: string
+          pickup_lat: number | null
+          pickup_lng: number | null
+          priority: number | null
+          special_instructions: string | null
+          status: string
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          dimensions?: string | null
+          drop_address: string
+          drop_lat?: number | null
+          drop_lng?: number | null
+          id?: string
+          order_number: string
+          org_id?: string | null
+          pickup_address: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          priority?: number | null
+          special_instructions?: string | null
+          status?: string
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          dimensions?: string | null
+          drop_address?: string
+          drop_lat?: number | null
+          drop_lng?: number | null
+          id?: string
+          order_number?: string
+          org_id?: string | null
+          pickup_address?: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          priority?: number | null
+          special_instructions?: string | null
+          status?: string
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
