@@ -27,15 +27,7 @@ interface DeliveryPartner {
 }
 
 interface Order {
-  id: string;
-  external_id: string;
-  pickup_name: string;
-  pickup_lat: number;
-  pickup_lng: number;
-  drop_name: string;
-  drop_lat: number;
-  drop_lng: number;
-  status: string;
+  [key: string]: any;
 }
 
 const OpenLayersMap: React.FC = () => {

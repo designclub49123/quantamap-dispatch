@@ -24,10 +24,14 @@ interface JobHistoryItem {
   total_orders: number;
   assigned_partners: number;
   optimization_type: string;
+  total_distance: number | null;
+  estimated_time: number | null;
+  actual_time: number | null;
+  cost_savings: number | null;
   created_at: string;
   updated_at: string;
-  completed_at?: string;
-  metadata: any;
+  completed_at: string | null;
+  org_id: string;
 }
 
 const JobHistory = () => {

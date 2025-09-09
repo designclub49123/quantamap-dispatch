@@ -25,24 +25,16 @@ interface JobAssignment {
   job_id: string;
   order_id: string;
   partner_id: string;
-  sequence_order: number;
-  estimated_duration: number | null;
-  estimated_distance: number | null;
-  orders: {
-    external_id: string;
-    pickup_name: string;
-    drop_name: string;
-    pickup_lat: number;
-    pickup_lng: number;
-    drop_lat: number;
-    drop_lng: number;
-  };
-  delivery_partners: {
-    name: string;
-    vehicle_type: string;
-    current_lat?: number;
-    current_lng?: number;
-  };
+  sequence: number;
+  estimated_arrival: string | null;
+  actual_arrival: string | null;
+  distance_km: number | null;
+  duration_minutes: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  orders: any;
+  delivery_partners: any;
 }
 
 const JobMap: React.FC<JobMapProps> = ({ jobId, isSimulating = false }) => {
@@ -244,7 +236,7 @@ const JobMap: React.FC<JobMapProps> = ({ jobId, isSimulating = false }) => {
 
       pickupFeature.setStyle(new Style({
         image: new Icon({
-          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="green" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${assignment.sequence_order}</text></svg>`,
+          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="green" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${assignment.sequence}</text></svg>`,
           scale: 1
         })
       }));
@@ -261,7 +253,7 @@ const JobMap: React.FC<JobMapProps> = ({ jobId, isSimulating = false }) => {
 
       dropFeature.setStyle(new Style({
         image: new Icon({
-          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="red" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${assignment.sequence_order}</text></svg>`,
+          src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="red" stroke="white" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${assignment.sequence}</text></svg>`,
           scale: 1
         })
       }));
@@ -350,7 +342,7 @@ const JobMap: React.FC<JobMapProps> = ({ jobId, isSimulating = false }) => {
         };
       }
       acc[assignment.partner_id].orders++;
-      acc[assignment.partner_id].distance += assignment.estimated_distance || 0;
+      acc[assignment.partner_id].distance += assignment.distance_km || 0;
       return acc;
     }, {} as Record<string, any>);
 

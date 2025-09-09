@@ -33,10 +33,13 @@ interface Job {
   optimization_type: string;
   total_orders: number;
   assigned_partners: number;
+  total_distance: number | null;
+  estimated_time: number | null;
+  actual_time: number | null;
+  cost_savings: number | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  metadata: any;
   org_id: string;
 }
 
@@ -45,22 +48,13 @@ interface JobAssignment {
   job_id: string;
   order_id: string;
   partner_id: string;
-  sequence_order: number;
-  estimated_duration: number | null;
-  estimated_distance: number | null;
-  orders: {
-    external_id: string;
-    pickup_name: string;
-    drop_name: string;
-    pickup_lat: number;
-    pickup_lng: number;
-    drop_lat: number;
-    drop_lng: number;
-  };
-  delivery_partners: {
-    name: string;
-    vehicle_type: string;
-  };
+  sequence: number;
+  estimated_arrival: string | null;
+  actual_arrival: string | null;
+  distance_km: number | null;
+  duration_minutes: number | null;
+  orders: any;
+  delivery_partners: any;
 }
 
 const JobDetail = () => {
@@ -147,11 +141,11 @@ const JobDetail = () => {
 
     if (assignments.length > 0) {
       const totalDistance = assignments.reduce((sum, assignment) => 
-        sum + (assignment.estimated_distance || 0), 0
+        sum + (assignment.distance_km || 0), 0
       );
       
       const totalTime = assignments.reduce((sum, assignment) => 
-        sum + (assignment.estimated_duration || 0), 0
+        sum + (assignment.duration_minutes || 0), 0
       );
 
       const fuelEfficiency = 0.083;
@@ -208,14 +202,14 @@ const JobDetail = () => {
         }
         
         acc[partnerId].orders.push({
-          sequence: assignment.sequence_order,
-          orderId: assignment.orders.external_id,
-          pickup: assignment.orders.pickup_name,
-          drop: assignment.orders.drop_name
+          sequence: assignment.sequence,
+          orderId: assignment.orders.order_number,
+          pickup: assignment.orders.pickup_address,
+          drop: assignment.orders.drop_address
         });
         
-        acc[partnerId].totalDistance += assignment.estimated_distance || 0;
-        acc[partnerId].totalTime += assignment.estimated_duration || 0;
+        acc[partnerId].totalDistance += assignment.distance_km || 0;
+        acc[partnerId].totalTime += assignment.duration_minutes || 0;
         
         return acc;
       }, {} as Record<string, any>);

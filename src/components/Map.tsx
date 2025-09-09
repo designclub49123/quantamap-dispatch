@@ -27,13 +27,14 @@ interface DeliveryPartner {
 
 interface Order {
   id: string;
-  external_id: string;
-  pickup_name: string;
-  pickup_lat: number;
-  pickup_lng: number;
-  drop_name: string;
-  drop_lat: number;
-  drop_lng: number;
+  order_number: string;
+  customer_name: string;
+  pickup_address: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  drop_address: string;
+  drop_lat: number | null;
+  drop_lng: number | null;
   status: string;
 }
 
@@ -143,8 +144,8 @@ const Map = () => {
         .addTo(map.current!)
         .bindPopup(`
           <div class="p-2">
-            <h3 class="font-semibold">Pickup: ${order.pickup_name}</h3>
-            <p class="text-sm text-gray-600">Order: ${order.external_id}</p>
+             <h3 class="font-semibold">Pickup: ${order.pickup_address}</h3>
+             <p class="text-sm text-gray-600">Order: ${order.order_number}</p>
             <p class="text-sm text-gray-600">Status: ${order.status}</p>
           </div>
         `);
@@ -165,8 +166,8 @@ const Map = () => {
         .addTo(map.current!)
         .bindPopup(`
           <div class="p-2">
-            <h3 class="font-semibold">Drop: ${order.drop_name}</h3>
-            <p class="text-sm text-gray-600">Order: ${order.external_id}</p>
+             <h3 class="font-semibold">Drop: ${order.drop_address}</h3>
+             <p class="text-sm text-gray-600">Order: ${order.order_number}</p>
             <p class="text-sm text-gray-600">Status: ${order.status}</p>
           </div>
         `);

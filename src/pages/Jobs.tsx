@@ -25,10 +25,13 @@ interface Job {
   optimization_type: string;
   total_orders: number;
   assigned_partners: number;
+  total_distance: number | null;
+  estimated_time: number | null;
+  actual_time: number | null;
+  cost_savings: number | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  metadata: any;
   org_id: string;
 }
 

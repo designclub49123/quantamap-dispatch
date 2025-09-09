@@ -178,20 +178,11 @@ Please respond in JSON format:
     const file = files[0];
     if (!file) return;
 
-    console.log('Handling file:', file.name, 'Type:', file.type, 'Size:', file.size);
-
-    // Validate file type
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'text/csv',
-      'application/csv'
-    ];
+    // Fast validation checks first
+    const validExtensions = ['.csv', '.xlsx', '.xls'];
+    const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
     
-    const isValidType = validTypes.includes(file.type) || file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    
-    if (!isValidType) {
-      console.error('Invalid file type:', file.type);
+    if (!hasValidExtension) {
       toast({
         title: "Invalid file type",
         description: "Please upload an Excel (.xlsx, .xls) or CSV file",
@@ -200,17 +191,17 @@ Please respond in JSON format:
       return;
     }
 
-    // Validate file size (10MB limit)
-    if (file.size > 10485760) {
+    // Check file size (5MB limit for faster processing)
+    if (file.size > 5242880) {
       toast({
         title: "File too large",
-        description: "Please upload a file smaller than 10MB",
+        description: "Please upload a file smaller than 5MB for faster processing",
         variant: "destructive"
       });
       return;
     }
 
-    // Check if API key is provided for AI parsing
+    // Check API key
     if (!apiKey) {
       setShowApiKeyInput(true);
       toast({
@@ -222,41 +213,29 @@ Please respond in JSON format:
     }
 
     setUploading(true);
-    setUploadProgress(0);
     setParsedData(null);
 
     try {
-      console.log('Starting file upload and parsing...');
+      // Fast file reading with optimized progress tracking
+      setUploadProgress(20);
       
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 50) {
-            clearInterval(progressInterval);
-            return 50;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // Read file content
       const fileContent = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onload = (e) => {
+          setUploadProgress(40);
+          resolve(e.target?.result as string);
+        };
         reader.onerror = reject;
         reader.readAsText(file);
       });
 
-      setUploadProgress(70);
       setParsing(true);
+      setUploadProgress(60);
 
-      // Parse with AI
+      // Optimized AI parsing with faster model
       const aiResult = await parseWithAI(fileContent, file.name);
       
       setUploadProgress(100);
-      clearInterval(progressInterval);
-      
-      console.log('AI parsing result:', aiResult);
       
       setParsedData({
         orders: aiResult.orders || [],
@@ -280,6 +259,7 @@ Please respond in JSON format:
     } finally {
       setUploading(false);
       setParsing(false);
+      setUploadProgress(0);
     }
   };
 
