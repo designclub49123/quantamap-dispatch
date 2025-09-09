@@ -3,8 +3,6 @@ import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +18,6 @@ import {
   Download,
   Eye,
   Save,
-  Key,
   Play
 } from "lucide-react";
 
@@ -34,11 +31,8 @@ interface ParsedData {
 const Upload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [apiKey, setApiKey] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
   const { toast } = useToast();
 
@@ -107,72 +101,6 @@ Amit Patel,car,20,08:00,17:00,+91-9876543212,amit@example.com`;
     }
   };
 
-  const parseWithAI = async (fileContent: string, fileName: string) => {
-    if (!apiKey) {
-      throw new Error("OpenRouter API key is required for AI parsing");
-    }
-
-    const prompt = `You are an AI assistant that parses delivery orders and partner data from CSV/Excel files. 
-    
-Please analyze the following file content and extract:
-1. Orders data with fields: external_id, pickup_name, pickup_lat, pickup_lng, drop_name, drop_lat, drop_lng, priority, weight, service_minutes
-2. Partners data with fields: name, vehicle_type, capacity, shift_start, shift_end, phone, email
-
-File name: ${fileName}
-File content:
-${fileContent}
-
-Please respond in JSON format:
-{
-  "orders": [...],
-  "partners": [...],
-  "warnings": [...]
-}`;
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Quantum Fleet AI Parser'
-      },
-      body: JSON.stringify({
-        model: 'qwen/qwen-2.5-7b-instruct',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content;
-    
-    if (!aiResponse) {
-      throw new Error("No response from AI model");
-    }
-
-    // Parse the JSON response
-    try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("Could not extract JSON from AI response");
-      }
-      
-      return JSON.parse(jsonMatch[0]);
-    } catch (error) {
-      console.error("Error parsing AI response:", aiResponse);
-      throw new Error("Failed to parse AI response as JSON");
-    }
-  };
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -191,22 +119,11 @@ Please respond in JSON format:
       return;
     }
 
-    // Check file size (5MB limit for faster processing)
-    if (file.size > 5242880) {
+    // Check file size (10MB limit)
+    if (file.size > 10485760) {
       toast({
         title: "File too large",
-        description: "Please upload a file smaller than 5MB for faster processing",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check API key
-    if (!apiKey) {
-      setShowApiKeyInput(true);
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenRouter API key to enable AI parsing",
+        description: "Please upload a file smaller than 10MB",
         variant: "destructive"
       });
       return;
@@ -216,49 +133,38 @@ Please respond in JSON format:
     setParsedData(null);
 
     try {
-      // Fast file reading with optimized progress tracking
-      setUploadProgress(20);
+      // Use the existing uploadAndParseFile function which handles both upload and parsing
+      setUploadProgress(10);
       
-      const fileContent = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setUploadProgress(40);
-          resolve(e.target?.result as string);
-        };
-        reader.onerror = reject;
-        reader.readAsText(file);
-      });
-
-      setParsing(true);
-      setUploadProgress(60);
-
-      // Optimized AI parsing with faster model
-      const aiResult = await parseWithAI(fileContent, file.name);
+      const result: UploadResult = await uploadAndParseFile(file);
       
       setUploadProgress(100);
       
-      setParsedData({
-        orders: aiResult.orders || [],
-        partners: aiResult.partners || [],
-        errors: [],
-        warnings: aiResult.warnings || []
-      });
-      
-      toast({
-        title: "File parsed successfully!",
-        description: `Found ${aiResult.orders?.length || 0} orders and ${aiResult.partners?.length || 0} partners`,
-      });
+      if (result.success && result.data) {
+        setParsedData({
+          orders: result.data.orders || [],
+          partners: result.data.partners || [],
+          errors: [],
+          warnings: result.data.warnings || []
+        });
+        
+        toast({
+          title: "File uploaded and parsed successfully!",
+          description: `Found ${result.data.orders?.length || 0} orders and ${result.data.partners?.length || 0} partners`,
+        });
+      } else {
+        throw new Error(result.error || "Failed to process file");
+      }
       
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: "Upload failed", 
-        description: error instanceof Error ? error.message : "There was an error uploading your file",
+        description: error instanceof Error ? error.message : "There was an error processing your file",
         variant: "destructive"
       });
     } finally {
       setUploading(false);
-      setParsing(false);
       setUploadProgress(0);
     }
   };
@@ -372,47 +278,10 @@ Please respond in JSON format:
           Upload Orders
         </h1>
         <p className="text-muted-foreground mt-2">
-          Upload Excel or CSV files with AI-powered parsing and validation
+          Upload Excel or CSV files with automatic parsing and validation
         </p>
       </div>
 
-      {/* API Key Input */}
-      {showApiKeyInput && (
-        <Card className="border-warning-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-warning-700">
-              <Key className="w-5 h-5" />
-              OpenRouter API Key Required
-            </CardTitle>
-            <CardDescription>
-              Enter your OpenRouter API key to enable AI-powered parsing with Qwen 2.5 7B Instruct model
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="Enter your OpenRouter API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Get your API key from <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="text-primary underline">openrouter.ai</a>
-              </p>
-            </div>
-            <Button 
-              onClick={() => setShowApiKeyInput(false)} 
-              disabled={!apiKey}
-              className="gap-2"
-            >
-              <Key className="w-4 h-4" />
-              Save API Key
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {!parsedData ? (
         <div className="space-y-6">
@@ -423,7 +292,7 @@ Please respond in JSON format:
                 <div>
                   <h3 className="text-lg font-semibold">Demo File</h3>
                   <p className="text-muted-foreground">
-                    Download a sample CSV file to test the AI parsing functionality
+                    Download a sample CSV file to test the parsing functionality
                   </p>
                 </div>
                 <Button variant="outline" onClick={downloadDemoFile} className="gap-2">
@@ -453,12 +322,12 @@ Please respond in JSON format:
                   accept=".xlsx,.xls,.csv"
                   onChange={handleChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploading || parsing}
+                  disabled={uploading}
                 />
                 
                 <div className="space-y-4">
                   <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
-                    {uploading || parsing ? (
+                    {uploading ? (
                       <Sparkles className="w-8 h-8 text-white animate-spin" />
                     ) : (
                       <FileSpreadsheet className="w-8 h-8 text-white" />
@@ -470,16 +339,6 @@ Please respond in JSON format:
                       <p className="text-lg font-medium">Uploading file...</p>
                       <Progress value={uploadProgress} className="w-full max-w-xs mx-auto" />
                       <p className="text-sm text-muted-foreground">{uploadProgress}% complete</p>
-                    </div>
-                  ) : parsing ? (
-                    <div className="space-y-2">
-                      <p className="text-lg font-medium">AI parsing in progress...</p>
-                      <div className="flex items-center justify-center gap-2">
-                        <Sparkles className="w-4 h-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">
-                          Processing with Qwen 2.5 7B Instruct
-                        </span>
-                      </div>
                     </div>
                   ) : (
                     <>
